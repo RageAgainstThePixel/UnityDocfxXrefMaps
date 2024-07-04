@@ -6,10 +6,6 @@
           "src": "../UnityCsReference/Projects/CSharp/",
           "files": [
             "**.csproj"
-          ],
-          "exclude": [
-            "**/bin/**",
-            "**/obj/**"
           ]
         }
       ],
@@ -33,9 +29,5 @@
         ]
       }
     ]
-  },
-  "globalMetadata": {
-    "_enableSearch": true,
-    "pdf": false
   }
 }
