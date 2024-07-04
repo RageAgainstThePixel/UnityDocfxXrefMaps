@@ -143,8 +143,33 @@ function rewriteHref {
 # Index HTML initial content
 Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 
-# Fetch and process branches
-$branches = git -C $UnityCsReferenceLocalPath branch -r | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+# Debug statement to capture branches before enumeration
+Write-Host "Fetching branches..."
+try {
+    $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
+    Write-Host "Branches output: $branchesOutput"
+    if (-not $branchesOutput) {
+        Write-Error "Failed to fetch branches or no branches found."
+        exit 1
+    }
+}
+catch {
+    Write-Error "Error fetching branches: $_"
+    exit 1
+}
+
+# Break down the branch fetching and enumeration for better diagnostics
+try {
+    $branches = $branchesOutput | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+    if (-not $branches) {
+        Write-Error "No matching branches found with the pattern 'origin/\d{4}\.\d+$'"
+        exit 1
+    }
+}
+catch {
+    Write-Error "Error processing branch output: $_"
+    exit 1
+}
 
 foreach ($branch in $branches) {
     Write-Host "Processing branch: $branch"
@@ -155,8 +180,14 @@ foreach ($branch in $branches) {
 
         Write-Host "Processing branch: $branch, version: $version"
 
-        git -C $UnityCsReferenceLocalPath checkout --force $branch
-        git -C $UnityCsReferenceLocalPath reset --hard
+        try {
+            git -C $UnityCsReferenceLocalPath checkout --force $branch
+            git -C $UnityCsReferenceLocalPath reset --hard
+        }
+        catch {
+            Write-Error "Failed to checkout/reset branch: $branch"
+            continue
+        }
 
         # Run docfx metadata
         Write-Host "Running DocFX for version $version"
