@@ -147,7 +147,7 @@ Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 Write-Host "Fetching branches..."
 try {
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
-    Write-Host "Branches output: $branchesOutput"
+
     if (-not $branchesOutput) {
         Write-Error "Failed to fetch branches or no branches found."
         exit 1
@@ -161,6 +161,7 @@ catch {
 # Break down the branch fetching and enumeration for better diagnostics
 try {
     $branches = $branchesOutput | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+
     if (-not $branches) {
         Write-Error "No matching branches found with the pattern 'origin/\d{4}\.\d+$'"
         exit 1
@@ -172,13 +173,11 @@ catch {
 }
 
 foreach ($branch in $branches) {
-    Write-Host "Processing branch: $branch"
-
     # Parse version from branch name
     if ($branch -match 'origin/(\d{4}\.\d+)') {
         $version = $Matches[1]
 
-        Write-Host "Processing branch: $branch, version: $version"
+        Write-Host "Processing version: $version"
 
         try {
             git -C $UnityCsReferenceLocalPath checkout --force $branch
