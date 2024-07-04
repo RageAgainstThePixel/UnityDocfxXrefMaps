@@ -191,7 +191,8 @@ foreach ($branch in $branches) {
 
         # Run docfx metadata
         Write-Host "Running DocFX for version $version"
-        docfx metadata ./.docfx/docfx.json --output ./.docfx/api/$version
+
+        docfx metadata ./.docfx/docfx.json --output ./.docfx/api/$version --logLevel Verbose
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "DocFX metadata generation failed for $version"
