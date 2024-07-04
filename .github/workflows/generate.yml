@@ -1,0 +1,31 @@
+name: Generate Unity xref maps
+on:
+  schedule:
+    # do once a week at midnight on Sunday
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+      - name: Checkout Unity xref repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Checkout UnityCsReference
+        uses: actions/checkout@v4
+        with:
+          repository: Unity-Technologies/UnityCsReference
+          ref: master
+          path: UnityCsReference
+      - run: ./generate-xref-maps.ps1
+      - uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          path: '_site'
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4.0.5
