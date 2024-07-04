@@ -17,6 +17,14 @@ Write-Host "Imported PowerShell-Yaml module"
 $UnityCsReferenceLocalPath = "UnityCsReference"
 $OutputFolder = Join-Path $PWD "_site"
 
+# Verify we have the correct directories
+if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
+    Write-Error "Directory not found: $UnityCsReferenceLocalPath"
+    exit 1
+}
+
+Write-Host "Found UnityCsReference directory: $UnityCsReferenceLocalPath"
+
 # Create output directory if it doesn't exist
 if (-not (Test-Path -Path $OutputFolder)) {
     Write-Host "Creating output directory: $OutputFolder"
@@ -136,7 +144,7 @@ function Fix-Href {
 Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 
 # Fetch and process branches
-$branches = git $UnityCsReferenceLocalPath branch -r | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+$branches = git -C $UnityCsReferenceLocalPath branch -r | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
 foreach ($branch in $branches) {
     Write-Host "Processing branch: $branch"
 
@@ -146,8 +154,8 @@ foreach ($branch in $branches) {
 
         Write-Host "Processing branch: $branch, version: $version"
 
-        git $UnityCsReferenceLocalPath checkout --force $branch
-        git $UnityCsReferenceLocalPath reset --hard
+        git -C $UnityCsReferenceLocalPath checkout --force $branch
+        git -C $UnityCsReferenceLocalPath reset --hard
 
         # Run docfx metadata
         Write-Host "Running DocFX for version $version"
@@ -217,4 +225,4 @@ foreach ($branch in $branches) {
 
 Add-Content -Path "$OutputFolder/index.html" -Value "</ul></body></html>"
 
-Write-Host "Completed generating Unity XRef maps"
+Write-Host "Unity XRef maps generated successfully!"
