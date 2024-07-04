@@ -24,6 +24,7 @@ jobs:
           ref: master
           path: UnityCsReference
       - run: ./generate-xref-maps.ps1
+        shell: pwsh
       - uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: '_site'
