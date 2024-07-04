@@ -191,7 +191,7 @@ foreach ($branch in $branches) {
         }
 
         $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
-        $versionFolder = Join-Path $DocfxLocalDir $version
+        $versionFolder = Join-Path $DocfxLocalDir "api/$version"
 
         Write-Host "Generating docfx metadata for version $version using $DocfxPath in $versionFolder"
         docfx metadata $DocfxPath --output $versionFolder --logLevel diagnostic

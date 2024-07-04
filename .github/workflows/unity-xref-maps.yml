@@ -4,6 +4,13 @@ on:
     # do once a week at midnight on Sunday
     - cron: '0 0 * * 0'
   workflow_dispatch:
+permissions:
+  actions: read
+  pages: write
+  id-token: write
+concurrency:
+  group: unity-xref-maps
+  cancel-in-progress: true
 jobs:
   generate:
     runs-on: windows-latest
