@@ -24,7 +24,7 @@ jobs:
           ref: master
           path: UnityCsReference
           fetch-depth: 0
-      - run: dotnet install tool -g docfx
+      - run: dotnet tool install -g docfx
       - run: pwsh ./generate-xref-maps.ps1
       - uses: actions/upload-pages-artifact@v3.0.1
         with:
