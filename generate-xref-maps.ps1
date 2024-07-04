@@ -191,8 +191,9 @@ foreach ($branch in $branches) {
 
         # Run docfx metadata
         Write-Host "Running DocFX for version $version"
-
-        docfx metadata ./.docfx/docfx.json --output ./.docfx/api/$version --logLevel Verbose
+        dotnet restore ./UnityCSReference/Projects/CSharp/UnityEditor.csproj
+        dotnet restore ./UnityCSReference/Projects/CSharp/UnityEngine.csproj
+        docfx metadata ./.docfx/docfx.json --output ./.docfx/api/$version --logLevel diagnostic
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "DocFX metadata generation failed for $version"
