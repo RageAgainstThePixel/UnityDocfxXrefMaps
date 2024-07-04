@@ -214,3 +214,5 @@ foreach ($branch in $branches) {
 }
 
 Add-Content -Path "$OutputFolder/index.html" -Value "</ul></body></html>"
+
+Write-Host "Completed generating Unity XRef maps"
