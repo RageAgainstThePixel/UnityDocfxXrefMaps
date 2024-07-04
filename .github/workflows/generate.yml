@@ -23,8 +23,7 @@ jobs:
           repository: Unity-Technologies/UnityCsReference
           ref: master
           path: UnityCsReference
-      - run: ./generate-xref-maps.ps1
-        shell: pwsh
+      - run: pwsh ./generate-xref-maps.ps1
       - uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: '_site'
