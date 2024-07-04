@@ -16,6 +16,7 @@ Write-Host "Imported PowerShell-Yaml module"
 
 $UnityCsReferenceLocalPath = "UnityCsReference"
 $OutputFolder = Join-Path $PWD "_site"
+$DocfxLocalDir = Join-Path $PWD ".docfx"
 
 # Verify we have the correct directories
 if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
@@ -31,7 +32,7 @@ if (-not (Test-Path -Path $OutputFolder)) {
     New-Item -ItemType Directory -Path $OutputFolder -Force
 }
 
-function Normalize-Text {
+function normalizeText {
     param (
         [string]$text
     )
@@ -189,11 +190,11 @@ foreach ($branch in $branches) {
             continue
         }
 
-        # Run docfx metadata
-        Write-Host "Running DocFX for version $version"
-        dotnet restore ./UnityCSReference/Projects/CSharp/UnityEditor.csproj
-        dotnet restore ./UnityCSReference/Projects/CSharp/UnityEngine.csproj
-        docfx metadata ./.docfx/docfx.json --output ./.docfx/api/$version --logLevel diagnostic
+        $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
+        $versionFolder = Join-Path $DocfxLocalDir $version
+
+        Write-Host "Generating docfx metadata for version $version using $DocfxPath in $versionFolder"
+        docfx metadata $DocfxPath --output $versionFolder --logLevel diagnostic
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "DocFX metadata generation failed for $version"
@@ -215,8 +216,8 @@ foreach ($branch in $branches) {
 
                 foreach ($item in $items) {
                     try {
-                        $fullName = Normalize-Text $item.fullName
-                        $name = Normalize-Text $item.name
+                        $fullName = normalizeText $item.fullName
+                        $name = normalizeText $item.name
                         $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $version
 
                         if ($href -ne $null) {
