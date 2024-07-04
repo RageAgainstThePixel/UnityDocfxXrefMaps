@@ -136,16 +136,18 @@ function Fix-Href {
 Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 
 # Fetch and process branches
-$branches = git -C $UnityCsReferenceLocalPath branch -r | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+$branches = git $UnityCsReferenceLocalPath branch -r | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
 foreach ($branch in $branches) {
+    Write-Host "Processing branch: $branch"
+
     # Parse version from branch name
     if ($branch -match 'origin/(\d{4}\.\d+)') {
         $version = $Matches[1]
 
         Write-Host "Processing branch: $branch, version: $version"
 
-        git -C $UnityCsReferenceLocalPath checkout --force $branch
-        git -C $UnityCsReferenceLocalPath reset --hard
+        git $UnityCsReferenceLocalPath checkout --force $branch
+        git $UnityCsReferenceLocalPath reset --hard
 
         # Run docfx metadata
         Write-Host "Running DocFX for version $version"
