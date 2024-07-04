@@ -36,10 +36,8 @@ function normalizeText {
     param (
         [string]$text
     )
-    if ($text -contains '(') { $text = $text.Substring(0, $text.IndexOf('(')) }
-    if ($text -contains '<') { $text = $text.Substring(0, $text.IndexOf('<')) }
-    $text = $text -replace '`', '_'
-    $text = $text -replace '#ctor', 'ctor'
+    if ($null -ne $text -match '(\(|<)') { $text = $text.Split('(<)')[0] }
+    $text = $text -replace '[`]', '_' -replace '#ctor', 'ctor'
     return $text
 }
 
@@ -64,52 +62,30 @@ function rewriteHref {
     )
 
     $href = $uid
+    $altHref = $null
 
-    # Handle namespaces pointing to documentation index
+    $nsTrimRegex = [regex]::new("^UnityEngine\.|^UnityEditor\.")
+
     if ($commentId -match "^N:") {
         $href = "index"
     }
     else {
-        # Trim UnityEngine and UnityEditor namespaces from href
-        $HrefNamespacesToTrim = @("UnityEditor", "UnityEngine")
-        foreach ($namespaceToTrim in $HrefNamespacesToTrim) {
-            $href = $href -replace "$namespaceToTrim\.", ""
-        }
+        $href = $nsTrimRegex.Replace($href, "")
 
-        # Adjust handling for enums
         if ($commentId -match "^F:.*") {
-            # If the comment ID indicates a field, check if it's part of an enum
             $isEnum = $href -match "\.([a-zA-Z][a-zA-Z0-9_]*)$"
-
-            if ($isEnum) {
-                # is enum member is lowercase, then use - instead of .
-                $enumMember = $Matches[1]
-
-                if ($enumMember -cmatch "^[a-z]") {
-                    $href = $href -replace "\.$enumMember$", "-$enumMember"
-                }
+            if ($isEnum -and $Matches[1] -cmatch "^[a-z]") {
+                $href = $href -replace "\.$($Matches[1])$", "-$($Matches[1])"
             }
+        }
+        elseif ($commentId -match "^M:.*\.#ctor$") {
+            $href = $href -replace "\.\#ctor$", "-ctor"
         }
         else {
-            # Fix href of constructors
-            if ($commentId -match "^M:.*\.#ctor$") {
-                $href = $href -replace "\.\#ctor$", "-ctor"
-            }
+            $href = $href -replace "``\d", "" -replace '`', ""
 
-            # Fix href of generics
-            $href = $href -replace "``\d", ""
-            $href = $href -replace '`', ""  # remove just backticks for generics
-
-            # Fix href of methods (both instance and static)
-            if ($commentId -match "^M:") {
-                # Handle methods without replacing dots in the name part
-                $href = $href -replace "\(.*\)$", ""  # Remove parenthesis and parameters
-            }
-            else {
-                # Handle properties and non-enum fields
-                if ($commentId -match "^(P|M|E):" -and $href.LastIndexOf('.') -ne -1) {
-                    $href = $href.Substring(0, $href.LastIndexOf('.')) + "-" + $href.Substring($href.LastIndexOf('.') + 1)
-                }
+            if ($commentId -match "^M:" -or $commentId -match "^(P|E):" -and $href.LastIndexOf('.') -ne -1) {
+                $href = $href.Substring(0, $href.LastIndexOf('.')) + "-" + $href.Substring($href.LastIndexOf('.') + 1)
             }
         }
     }
@@ -120,19 +96,17 @@ function rewriteHref {
         return $url
     }
     else {
-        # Attempt alternative URL by switching between last index of '.' and '-'
-        # use match instead of -contains
         if ($href -match "-") {
-            $alternativeHref = $href -replace "-", "."
+            $altHref = $href -replace "-", "."
         }
         else {
-            $alternativeHref = $href -replace "\.", "-"
+            $altHref = $href -replace "\.", "-"
         }
 
-        $alternativeUrl = "https://docs.unity3d.com/$version/Documentation/ScriptReference/$alternativeHref.html"
+        $altUrl = "https://docs.unity3d.com/$version/Documentation/ScriptReference/$altHref.html"
 
-        if (validateUrl -url $alternativeUrl) {
-            return $alternativeUrl
+        if (validateUrl -url $altUrl) {
+            return $altUrl
         }
         else {
             Write-Warning "$uid -> $url"
@@ -161,7 +135,9 @@ catch {
 
 # Break down the branch fetching and enumeration for better diagnostics
 try {
-    $branches = $branchesOutput | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+    $branches = $branchesOutput | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object {
+        $_.Matches.Value.Trim()
+    }
 
     if (-not $branches) {
         Write-Error "No matching branches found with the pattern 'origin/\d{4}\.\d+$'"
@@ -207,9 +183,11 @@ foreach ($branch in $branches) {
         # Generate XRef map YAML
         Write-Host "Generating XRef map for version $version"
         $references = @()
-        Get-ChildItem -Path $GeneratedMetadataPath -Filter '*.yml' | ForEach-Object {
-            $filePath = $_.FullName
-            $firstLine = Get-Content $filePath -First 1
+        $files = Get-ChildItem -Path $GeneratedMetadataPath -Filter '*.yml'
+
+        foreach ($file in $files) {
+            $filePath = $file.FullName
+            $firstLine = Get-Content $filePath -TotalCount 1
             if ($firstLine -eq "### YamlMime:ManagedReference") {
                 $yaml = Get-Content $filePath -Raw | ConvertFrom-Yaml
                 $items = $yaml.items
@@ -220,16 +198,16 @@ foreach ($branch in $branches) {
                         $name = normalizeText $item.name
                         $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $version
 
-                        if ($href -ne $null) {
-                            Write-Host "$fullName -> $href"
+                        if ($null -ne $href) {
+                            # Write-Host "$fullName -> $href"
 
                             $references += [PSCustomObject]@{
-                                Uid          = $item.uid
-                                Name         = $name
-                                Href         = $href
-                                CommentId    = $item.commentId
-                                FullName     = $fullName
-                                NameWithType = $item.nameWithType
+                                uid          = $item.uid
+                                name         = $name
+                                href         = $href
+                                commentId    = $item.commentId
+                                fullName     = $fullName
+                                nameWithType = $item.nameWithType
                             }
                         }
                     }
