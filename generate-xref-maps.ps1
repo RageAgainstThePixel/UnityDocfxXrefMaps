@@ -42,7 +42,7 @@ function Normalize-Text {
     return $text
 }
 
-function Validate-Url {
+function validateUrl {
     param (
         [string]$url
     )
@@ -55,7 +55,7 @@ function Validate-Url {
     }
 }
 
-function Fix-Href {
+function rewriteHref {
     param (
         [string]$uid,
         [string]$commentId,
@@ -115,7 +115,7 @@ function Fix-Href {
 
     $url = "https://docs.unity3d.com/$version/Documentation/ScriptReference/$href.html"
 
-    if (Validate-Url -url $url) {
+    if (validateUrl -url $url) {
         return $url
     }
     else {
@@ -130,7 +130,7 @@ function Fix-Href {
 
         $alternativeUrl = "https://docs.unity3d.com/$version/Documentation/ScriptReference/$alternativeHref.html"
 
-        if (Validate-Url -url $alternativeUrl) {
+        if (validateUrl -url $alternativeUrl) {
             return $alternativeUrl
         }
         else {
@@ -145,6 +145,7 @@ Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 
 # Fetch and process branches
 $branches = git -C $UnityCsReferenceLocalPath branch -r | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object { $_.Matches.Value.Trim() }
+
 foreach ($branch in $branches) {
     Write-Host "Processing branch: $branch"
 
@@ -183,7 +184,7 @@ foreach ($branch in $branches) {
                     try {
                         $fullName = Normalize-Text $item.fullName
                         $name = Normalize-Text $item.name
-                        $href = Fix-Href -uid $item.uid -commentId $item.commentId -version $version
+                        $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $version
 
                         if ($href -ne $null) {
                             Write-Host "$fullName -> $href"
