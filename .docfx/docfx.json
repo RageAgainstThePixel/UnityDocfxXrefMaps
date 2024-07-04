@@ -14,9 +14,6 @@
         }
       ],
       "filter": "filterConfig.yml",
-      "properties": {
-        "TargetFramework": "net35"
-      },
       "disableGitFeatures": true
     }
   ],

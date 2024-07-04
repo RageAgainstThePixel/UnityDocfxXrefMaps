@@ -20,14 +20,14 @@ Import-Module -Name PowerShell-Yaml
 
 Write-Host "Imported PowerShell-Yaml module"
 
-$UnityCsReferenceLocalPath = "UnityCsReference"
+$UnityCsReferenceLocalPath = Join-Path $PWD "UnityCsReference"
 $OutputFolder = Join-Path $PWD "_site"
 $DocfxLocalDir = Join-Path $PWD ".docfx"
 
 # Verify we have the correct directories
 if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
-    Write-Error "Directory not found: $UnityCsReferenceLocalPath"
-    exit 1
+    # checkout the UnityCsReference repository
+    git clone "https://github.com/Unity-Technologies/UnityCsReference" $UnityCsReferenceLocalPath
 }
 
 Write-Host "Found UnityCsReference directory: $UnityCsReferenceLocalPath"
@@ -38,9 +38,6 @@ if (-not (Test-Path -Path $OutputFolder)) {
     New-Item -ItemType Directory -Path $OutputFolder -Force
 }
 
-
-# Index HTML initial content
-Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 
 # Debug statement to capture branches before enumeration
 Write-Host "Fetching branches..."
@@ -101,7 +98,19 @@ foreach ($branch in $branches) {
 
         if (-not (Test-Path -Path $versionFolder)) {
             Write-Host "Generating docfx metadata for version $version using $DocfxPath in $versionFolder"
-            docfx metadata $DocfxPath --output $versionFolder
+
+            try {
+                if ($version -match '^2019\.\d+') {
+                    docfx metadata $DocfxPath --output $versionFolder --property Configuration=Debug
+                }
+                else {
+                    docfx metadata $DocfxPath --output $versionFolder
+                }
+            }
+            catch {
+                Write-Error "DocFX metadata generation failed for version $version. Error details: $_"
+                continue
+            }
 
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "DocFX metadata generation failed for $version"
@@ -116,8 +125,10 @@ foreach ($branch in $branches) {
     }
 }
 
-# Use parallel processing to handle the XRef map generation
-Write-Host "Processing XRef maps in parallel..."
+Write-Host "Generating XRef map index..."
+
+# Index HTML initial content
+Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
 
 $metadataList | ForEach-Object -Parallel {
     $version = $_.Version
