@@ -182,6 +182,7 @@ foreach ($branch in $branches) {
         try {
             git -C $UnityCsReferenceLocalPath checkout --force $branch
             git -C $UnityCsReferenceLocalPath reset --hard
+            git -C $UnityCsReferenceLocalPath clean -ffdx
         }
         catch {
             Write-Error "Failed to checkout/reset branch: $branch"
