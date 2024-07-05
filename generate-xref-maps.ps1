@@ -30,7 +30,6 @@ if (Test-Path -Path $OutputFolder) {
 New-Item -ItemType Directory -Path $OutputFolder -Force | Out-Null
 
 try {
-    git config advice.detachedHead false
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
 
     if (-not $branchesOutput) {
