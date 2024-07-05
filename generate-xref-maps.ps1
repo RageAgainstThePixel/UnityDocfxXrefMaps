@@ -17,6 +17,7 @@ Import-Module -Name PowerShell-Yaml
 $UnityCsReferenceLocalPath = Join-Path $PWD "UnityCsReference"
 $OutputFolder = Join-Path $PWD "_site"
 $DocfxLocalDir = Join-Path $PWD ".docfx"
+$DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
 
 if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
     git clone "https://github.com/Unity-Technologies/UnityCsReference" $UnityCsReferenceLocalPath
@@ -29,6 +30,7 @@ if (Test-Path -Path $OutputFolder) {
 New-Item -ItemType Directory -Path $OutputFolder -Force | Out-Null
 
 try {
+    git config advice.detachedHead false
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
 
     if (-not $branchesOutput) {
@@ -211,9 +213,7 @@ function generateXRefMap {
         references             = $references | Sort-Object uid
     } | ConvertTo-Yaml
 
-    $relativeOutputFilePath = "$version/xrefmap.yml"
-    $outputFilePath = Join-Path $outputFolder $relativeOutputFilePath
-
+    $outputFilePath = Join-Path $outputFolder "$version/xrefmap.yml"
     Write-Host "$version Writing XRef map to $outputFilePath"
     New-Item -ItemType Directory -Path (Split-Path $outputFilePath) -Force
     Set-Content -Path $outputFilePath -Value $xrefMapContent
@@ -224,11 +224,10 @@ function generateMetadata {
         [string]$Version
     )
 
-    git -C $UnityCsReferenceLocalPath checkout "origin/$Version" -b $Version
-    $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
     $versionFolder = Join-Path $DocfxLocalDir "xref/$Version"
 
     if (-not (Test-Path -Path $versionFolder)) {
+        git -C $UnityCsReferenceLocalPath checkout "origin/$Version" -f | Out-Null
         docfx metadata $DocfxPath --output $versionFolder --logLevel error
 
         if ($LASTEXITCODE -ne 0) {
