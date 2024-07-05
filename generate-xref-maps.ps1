@@ -218,19 +218,19 @@ function generateXRefMap {
     Set-Content -Path $outputFilePath -Value $xrefMapContent
 }
 
-function generateMetadata {
-    param (
-        [string]$Version
-    )
+Write-Host "Processing XRef metadata..."
 
+$versionMetadata = @()
+
+foreach ($version in $versions) {
     $versionFolder = Join-Path $DocfxLocalDir "xref/$Version"
 
     if (-not (Test-Path -Path $versionFolder)) {
-        git -C $UnityCsReferenceLocalPath checkout --force "origin/$Version"
+        git -C $UnityCsReferenceLocalPath checkout "origin/$Version"
+        Write-Host "Generating metadata for $Version..."
 
         try {
-            # redirect stdout to console
-            docfx metadata $DocfxPath --output $versionFolder --logLevel verbose
+            docfx metadata $DocfxPath --output $versionFolder --logLevel error
         }
         catch {
             Write-Error "Failed generating DocFX metadata for $Version `nDetails: $_"
@@ -242,19 +242,14 @@ function generateMetadata {
             return
         }
     }
+    else {
+        Write-Host "Metadata generation for $Version already exists. Skipping..."
+    }
 
-    return [PSCustomObject]@{
+    $versionMetadata +=  [PSCustomObject]@{
         Version      = $Version
         MetadataPath = $versionFolder
     }
-}
-
-Write-Host "Processing XRef metadata..."
-
-$versionMetadata = @()
-
-foreach ($version in $versions) {
-    $versionMetadata += generateMetadata -Version $version
 }
 
 $versionMetadata | ForEach-Object -Parallel {
