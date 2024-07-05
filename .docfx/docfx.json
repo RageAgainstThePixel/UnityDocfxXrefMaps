@@ -9,8 +9,7 @@
           ]
         }
       ],
-      "filter": "filterConfig.yml",
-      "disableGitFeatures": true
+      "filter": "filterConfig.yml"
     }
   ]
 }

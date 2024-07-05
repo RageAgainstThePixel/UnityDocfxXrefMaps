@@ -68,10 +68,14 @@ foreach ($branch in $branches) {
     }
 }
 
+$versions = $versions | Sort-Object -Descending
+
 Set-Content -Path "$OutputFolder/index.html" -Value "<html><head><title>Unity XRef Maps for DocFX</title></head><body><ul>"
-$versions | Sort-Object -Descending | ForEach-Object {
-    Add-Content -Path "$OutputFolder/index.html" -Value "<li><a href=""$_/xrefmap.yml"">$_</a></li>"
+
+foreach ($version in $versions) {
+    Add-Content -Path "$OutputFolder/index.html" -Value "<li><a href=""$version/xrefmap.yml"">$version</a></li>"
 }
+
 Add-Content -Path "$outputFolder/index.html" -Value "</ul></body></html>"
 
 function generateXRefMap {
