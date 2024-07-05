@@ -77,7 +77,6 @@ foreach ($version in $versions) {
 
 Add-Content -Path "$outputFolder/index.html" -Value "</ul></body></html>"
 
-
 Write-Host "Processing XRef metadata..."
 
 $versionMetadata = @()
