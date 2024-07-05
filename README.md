@@ -10,4 +10,4 @@ The URL for a map follows the pattern:
 
 The available versions are generated from each of the branches of [Unity's C# Reference repository](https://github.com/Unity-Technologies/UnityCsReference).
 
-Special Thanks to [@nicoco007](https://github.com/nicoco007/UnityXRefMap) and [@NormandErwan](https://github.com/NormandErwan/UnityXrefMaps) for their whom most of this implemented is based on.
+Special Thanks to [@nicoco007](https://github.com/nicoco007/UnityXRefMap) and [@NormandErwan](https://github.com/NormandErwan/UnityXrefMaps) for whom most of this implementation is based on.
