@@ -24,10 +24,10 @@ if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
 }
 
 if (Test-Path -Path $OutputFolder) {
-    Remove-Item -Path $OutputFolder -Recurse -Force | Out-Null
+    Remove-Item -Path $OutputFolder -Recurse -Force
 }
 
-New-Item -ItemType Directory -Path $OutputFolder -Force | Out-Null
+New-Item -ItemType Directory -Path $OutputFolder -Force
 
 try {
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
@@ -226,13 +226,14 @@ function generateMetadata {
     $versionFolder = Join-Path $DocfxLocalDir "xref/$Version"
 
     if (-not (Test-Path -Path $versionFolder)) {
-        git -C $UnityCsReferenceLocalPath checkout "origin/$Version" -f
+        git -C $UnityCsReferenceLocalPath checkout --force "origin/$Version"
 
         try {
+            # redirect stdout to console
             docfx metadata $DocfxPath --output $versionFolder --logLevel verbose
         }
         catch {
-            Write-Error "Error generating metadata for $Version `nDetails: $_"
+            Write-Error "Failed generating DocFX metadata for $Version `nDetails: $_"
             return
         }
 
