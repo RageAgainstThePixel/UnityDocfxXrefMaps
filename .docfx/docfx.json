@@ -12,22 +12,5 @@
       "filter": "filterConfig.yml",
       "disableGitFeatures": true
     }
-  ],
-  "build":
-  {
-    "xrefService": [ "https://xref.docs.microsoft.com/query?uid={uid}" ],
-    "content": [
-      {
-        "files": [
-          "**/*.{md,yml}"
-        ]
-      },
-      {
-        "src": "../UnityCsReference/",
-        "files":[
-          "/*.md"
-        ]
-      }
-    ]
-  }
+  ]
 }

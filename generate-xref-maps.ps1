@@ -90,28 +90,14 @@ foreach ($branch in $branches) {
         }
 
         $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
-        $versionFolder = Join-Path $DocfxLocalDir "api/$version"
+        $versionFolder = Join-Path $DocfxLocalDir $version
 
         # if the version folder already exists, skip metadata generation but add to the list
 
         if (-not (Test-Path -Path $versionFolder)) {
             Write-Host "Generating docfx metadata for version $version using $DocfxPath -> $versionFolder"
 
-            # if 2019.1+ add --property Configuration=Debug
-            if ($version -ge "2019.1") {
-                # if 2023.1+ remove the Configuration property and add TargetFramework netstandard2.1
-                if ($version -ge "2022.3") {
-                    docfx metadata $DocfxPath --output $versionFolder
-                }
-                else {
-                    Write-Host "Generating metadata for version $version with Configuration=Debug"
-                    docfx metadata $DocfxPath --output $versionFolder --property Configuration=Debug
-                }
-            }
-            else {
-                Write-Host "Generating metadata for version $version without any property"
-                docfx metadata $DocfxPath --output $versionFolder
-            }
+            docfx metadata $DocfxPath --output $versionFolder
 
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "DocFX metadata generation failed for $version"
