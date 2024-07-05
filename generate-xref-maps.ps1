@@ -27,7 +27,7 @@ if (Test-Path -Path $OutputFolder) {
     Remove-Item -Path $OutputFolder -Recurse -Force | Out-Null
 }
 
-New-Item -ItemType Directory -Path $OutputFolder -Force
+New-Item -ItemType Directory -Path $OutputFolder -Force | Out-Null
 
 try {
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
