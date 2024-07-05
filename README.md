@@ -17,7 +17,7 @@ Special Thanks to [@nicoco007](https://github.com/nicoco007/UnityXRefMap) and [@
 ```json
 "build": {
     "xref": [
-+        "https://rageagainstthepixel.github.io/UnityXrefMaps/<year>.<major>/xrefmap.yml"
+        "https://rageagainstthepixel.github.io/UnityXrefMaps/<year>.<major>/xrefmap.yml"
     ]
 }
 ```
