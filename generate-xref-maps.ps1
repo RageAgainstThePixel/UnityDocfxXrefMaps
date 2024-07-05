@@ -235,7 +235,7 @@ foreach ($version in $versions) {
 
         try {
             # for versions between 2019.1 and 2021.3 add Debug configuration property
-            if ($version -ge "2019.1" -and $version -lt "2021.3") {
+            if ($version -ge "2019.1" -and $version -le "2021.3") {
                 docfx metadata $DocfxPath --output $versionFolder --logLevel error --property Configuration=Debug
             }
             else {
