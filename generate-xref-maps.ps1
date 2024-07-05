@@ -1,3 +1,5 @@
+Write-Host "Generating Unity XRef maps"
+
 # Ensure normalized execution environment
 Set-StrictMode -Version Latest
 
@@ -6,44 +8,29 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     exit 1
 }
 
-Write-Host "Generating Unity XRef maps"
-
-# Install the PowerShell-Yaml module if it's not already installed
 if (-not (Get-Module -ListAvailable -Name PowerShell-Yaml)) {
     Install-Module -Name PowerShell-Yaml -Force -Scope CurrentUser
 }
 
-# Import the PowerShell-Yaml module
 Import-Module -Name PowerShell-Yaml
-
-Write-Host "Imported PowerShell-Yaml module"
 
 $UnityCsReferenceLocalPath = Join-Path $PWD "UnityCsReference"
 $OutputFolder = Join-Path $PWD "_site"
 $DocfxLocalDir = Join-Path $PWD ".docfx"
 
-# Verify we have the correct directories
 if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
-    # checkout the UnityCsReference repository
     git clone "https://github.com/Unity-Technologies/UnityCsReference" $UnityCsReferenceLocalPath
 }
 
-Write-Host "Found UnityCsReference directory: $UnityCsReferenceLocalPath"
-
-# Create output directory if it doesn't exist
 if (-not (Test-Path -Path $OutputFolder)) {
-    Write-Host "Creating output directory: $OutputFolder"
-    New-Item -ItemType Directory -Path $OutputFolder -Force
+    New-Item -ItemType Directory -Path $OutputFolder -Force -ErrorAction Stop
 }
 
-
-# Debug statement to capture branches before enumeration
-Write-Host "Fetching branches..."
 try {
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
 
     if (-not $branchesOutput) {
-        Write-Error "Failed to fetch branches or no branches found."
+        Write-Error "Failed to find UnityCsReference repository branches!"
         exit 1
     }
 }
@@ -52,7 +39,6 @@ catch {
     exit 1
 }
 
-# Break down the branch fetching and enumeration for better diagnostics
 try {
     $branches = $branchesOutput | Select-String -Pattern 'origin/\d{4}\.\d+$' | ForEach-Object {
         $_.Matches.Value.Trim()
@@ -73,16 +59,14 @@ catch {
 $metadataList = @()
 
 foreach ($branch in $branches) {
-    # Parse version from branch name
     if ($branch -match '\d{4}\.\d+') {
         $version = $Matches[0]
 
         Write-Host "Processing version: $version"
 
         try {
-            git -C $UnityCsReferenceLocalPath checkout --force "origin/$branch"
-            git -C $UnityCsReferenceLocalPath reset --hard
             git -C $UnityCsReferenceLocalPath clean -ffdx
+            git -C $UnityCsReferenceLocalPath checkout --force "origin/$branch"
         }
         catch {
             Write-Error "Failed to checkout/reset branch: $branch"
@@ -90,14 +74,12 @@ foreach ($branch in $branches) {
         }
 
         $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
-        $versionFolder = Join-Path $DocfxLocalDir $version
-
-        # if the version folder already exists, skip metadata generation but add to the list
+        $versionFolder = Join-Path $DocfxLocalDir "xref/$version"
 
         if (-not (Test-Path -Path $versionFolder)) {
             Write-Host "Generating docfx metadata for version $version using $DocfxPath -> $versionFolder"
 
-            docfx metadata $DocfxPath --output $versionFolder
+            docfx metadata $DocfxPath --output $versionFolder --logLevel error
 
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "DocFX metadata generation failed for $version"
@@ -107,7 +89,7 @@ foreach ($branch in $branches) {
 
         $metadataList += [PSCustomObject]@{
             Version               = $version
-            GeneratedMetadataPath = Join-Path $DocfxLocalDir "api/$version"
+            GeneratedMetadataPath = $versionFolder
         }
     }
 }
