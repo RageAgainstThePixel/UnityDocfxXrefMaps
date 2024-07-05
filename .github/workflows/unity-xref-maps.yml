@@ -15,7 +15,6 @@ jobs:
   generate:
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-dotnet@v4
       - uses: actions/checkout@v4
       - run: |
           dotnet tool update -g docfx
