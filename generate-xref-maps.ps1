@@ -226,8 +226,15 @@ function generateMetadata {
     $versionFolder = Join-Path $DocfxLocalDir "xref/$Version"
 
     if (-not (Test-Path -Path $versionFolder)) {
-        git -C $UnityCsReferenceLocalPath checkout "origin/$Version" -f | Out-Null
-        docfx metadata $DocfxPath --output $versionFolder --logLevel error
+        git -C $UnityCsReferenceLocalPath checkout "origin/$Version" -f
+
+        try {
+            docfx metadata $DocfxPath --output $versionFolder --logLevel verbose
+        }
+        catch {
+            Write-Error "Error generating metadata for $Version `nDetails: $_"
+            return
+        }
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "DocFX metadata generation failed for $Version"
