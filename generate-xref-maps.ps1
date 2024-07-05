@@ -69,9 +69,10 @@ foreach ($branch in $branches) {
 }
 
 Set-Content -Path "$OutputFolder/index.html" -Value "<html><head><title>Unity XRef Maps for DocFX</title></head><body><ul>"
+$versions = $versions | Sort-Object -Descending
 
-$versions | Sort-Object -Descending | ForEach-Object {
-    Add-Content -Path "$OutputFolder/index.html" -Value "<li><a href=""$_/xrefmap.yml"">$_</a></li>"
+foreach ($version in $versions) {
+    Add-Content -Path "$OutputFolder/index.html" -Value "<li><a href=""$version/xrefmap.yml"">$version</a></li>"
 }
 
 Add-Content -Path "$outputFolder/index.html" -Value "</ul></body></html>"
@@ -228,6 +229,7 @@ foreach ($version in $versions) {
     $versionFolder = Join-Path $DocfxLocalDir "xref/$Version"
 
     if (-not (Test-Path -Path $versionFolder)) {
+        git -C $UnityCsReferenceLocalPath clean -ffdx
         git -C $UnityCsReferenceLocalPath checkout "origin/$Version"
         Write-Host "Generating metadata for $Version..."
 
