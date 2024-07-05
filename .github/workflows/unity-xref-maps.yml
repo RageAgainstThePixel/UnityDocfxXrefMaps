@@ -15,25 +15,11 @@ jobs:
   generate:
     runs-on: windows-latest
     steps:
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.x
-      - name: Checkout Unity xref repo
-        uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: Checkout UnityCsReference
-        uses: actions/checkout@v4
-        with:
-          repository: Unity-Technologies/UnityCsReference
-          ref: master
-          path: UnityCsReference
-          fetch-depth: 0
-      - run: dotnet tool update -g docfx
-      - run: pwsh ./generate-xref-maps.ps1
-      - uses: actions/upload-pages-artifact@v3.0.1
-        with:
-          path: '_site'
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4.0.5
+      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - run: |
+          dotnet tool update -g docfx
+          ./generate-xref-maps.ps1
+        shell: pwsh
+      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/deploy-pages@v4

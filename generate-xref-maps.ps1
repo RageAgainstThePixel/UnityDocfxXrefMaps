@@ -67,7 +67,13 @@ foreach ($branch in $branches) {
     }
 }
 
-function generateMetadata {
+Set-Content -Path "$OutputFolder/index.html" -Value "<html><head><title>Unity XRef Maps for DocFX</title></head><body><ul>"
+$versions | Sort-Object -Descending | ForEach-Object {
+    Add-Content -Path "$OutputFolder/index.html" -Value "<li><a href=""$_/xrefmap.yml"">$_</a></li>"
+}
+Add-Content -Path "$outputFolder/index.html" -Value "</ul></body></html>"
+
+function generateXRefMap {
     param (
         [string]$version,
         [string]$GeneratedMetadataPath,
@@ -155,7 +161,7 @@ function generateMetadata {
                     return $altUrl
                 }
                 else {
-                    Write-Warning "$uid -> $url"
+                    # Write-Warning "$uid -> $url"
                     return $null
                 }
             }
@@ -176,7 +182,7 @@ function generateMetadata {
                     $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $using:version
 
                     if ($null -ne $href) {
-                        Write-Host "$fullName -> $href"
+                        # Write-Host "$fullName -> $href"
                         $referencesLocal += [PSCustomObject]@{
                             uid          = $item.uid
                             name         = $name
@@ -213,22 +219,16 @@ function generateMetadata {
     Set-Content -Path $outputFilePath -Value $xrefMapContent
 }
 
-function processVersion {
+function generateMetadata {
     param (
         [string]$Version
     )
 
-    Write-Host "Processing version: $Version"
-
-    git -C $UnityCsReferenceLocalPath clean -ffdx | Out-Null
-    git -C $UnityCsReferenceLocalPath checkout --force "origin/$Version" -b $Version
-
+    git -C $UnityCsReferenceLocalPath checkout "origin/$Version" -b $Version
     $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
     $versionFolder = Join-Path $DocfxLocalDir "xref/$Version"
 
     if (-not (Test-Path -Path $versionFolder)) {
-        Write-Host "Generating docfx metadata for version $Version using $DocfxPath -> $versionFolder"
-
         docfx metadata $DocfxPath --output $versionFolder --logLevel error
 
         if ($LASTEXITCODE -ne 0) {
@@ -243,27 +243,16 @@ function processVersion {
     }
 }
 
-Write-Host "Generating XRef map indexes..."
-
-# Index HTML initial content
-Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
-
-foreach ($version in $versions) {
-    Add-Content -Path "$OutputFolder/index.html" -Value "<li><a href=""$version/xrefmap.yml"">$version</a></li>"
-}
-
-Add-Content -Path "$outputFolder/index.html" -Value "</ul></body></html>"
-
 Write-Host "Processing XRef metadata..."
 
 $versionMetadata = @()
 
 foreach ($version in $versions) {
-    $versionMetadata += processVersion -Version $version
+    $versionMetadata += generateMetadata -Version $version
 }
 
 $versionMetadata | ForEach-Object -Parallel {
-    generateMetadata -version $_.Version -GeneratedMetadataPath $_.MetadataPath -outputFolder $using:OutputFolder
+    generateXRefMap -version $_.Version -GeneratedMetadataPath $_.MetadataPath -outputFolder $using:OutputFolder
 }
 
 Write-Host "Unity XRef maps generated successfully!"
