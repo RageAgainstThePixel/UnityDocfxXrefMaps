@@ -22,9 +22,11 @@ if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
     git clone "https://github.com/Unity-Technologies/UnityCsReference" $UnityCsReferenceLocalPath
 }
 
-if (-not (Test-Path -Path $OutputFolder)) {
-    New-Item -ItemType Directory -Path $OutputFolder -Force -ErrorAction Stop
+if (Test-Path -Path $OutputFolder) {
+    Remove-Item -Path $OutputFolder -Recurse -Force | Out-Null
 }
+
+New-Item -ItemType Directory -Path $OutputFolder -Force | Out-Null
 
 try {
     $branchesOutput = git -C $UnityCsReferenceLocalPath branch -r
@@ -64,14 +66,8 @@ foreach ($branch in $branches) {
 
         Write-Host "Processing version: $version"
 
-        try {
-            git -C $UnityCsReferenceLocalPath clean -ffdx
-            git -C $UnityCsReferenceLocalPath checkout --force "origin/$branch"
-        }
-        catch {
-            Write-Error "Failed to checkout/reset branch: $branch"
-            continue
-        }
+        git -C $UnityCsReferenceLocalPath clean -ffdx | Out-Null
+        git -C $UnityCsReferenceLocalPath checkout --force "origin/$branch" -b $branch
 
         $DocfxPath = Join-Path $DocfxLocalDir "docfx.json"
         $versionFolder = Join-Path $DocfxLocalDir "xref/$version"
@@ -94,7 +90,7 @@ foreach ($branch in $branches) {
     }
 }
 
-Write-Host "Generating XRef map index..."
+Write-Host "Generating XRef map indexes..."
 
 # Index HTML initial content
 Set-Content -Path "$OutputFolder/index.html" -Value "<html><body><ul>"
@@ -232,7 +228,7 @@ $metadataList | ForEach-Object -Parallel {
     $xrefMapContent = @{
         "### YamlMime:XRefMap" = $null
         sorted                 = $true
-        references             = $references | Sort-Object Uid
+        references             = $references | Sort-Object uid
     } | ConvertTo-Yaml
 
     $relativeOutputFilePath = "$version/xrefmap.yml"
