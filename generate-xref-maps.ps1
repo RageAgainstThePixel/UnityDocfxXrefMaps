@@ -97,19 +97,22 @@ foreach ($branch in $branches) {
         # if the version folder already exists, skip metadata generation but add to the list
 
         if (-not (Test-Path -Path $versionFolder)) {
-            Write-Host "Generating docfx metadata for version $version using $DocfxPath in $versionFolder"
+            Write-Host "Generating docfx metadata for version $version using $DocfxPath -> $versionFolder"
 
-            try {
-                if ($version -match '^2019\.\d+') {
-                    docfx metadata $DocfxPath --output $versionFolder --property Configuration=Debug
-                }
-                else {
+            # if 2019.1+ add --property Configuration=Debug
+            if ($version -ge "2019.1") {
+                # if 2023.1+ remove the Configuration property and add TargetFramework netstandard2.1
+                if ($version -ge "2022.3") {
                     docfx metadata $DocfxPath --output $versionFolder
                 }
+                else {
+                    Write-Host "Generating metadata for version $version with Configuration=Debug"
+                    docfx metadata $DocfxPath --output $versionFolder --property Configuration=Debug
+                }
             }
-            catch {
-                Write-Error "DocFX metadata generation failed for version $version. Error details: $_"
-                continue
+            else {
+                Write-Host "Generating metadata for version $version without any property"
+                docfx metadata $DocfxPath --output $versionFolder
             }
 
             if ($LASTEXITCODE -ne 0) {
@@ -135,7 +138,7 @@ $metadataList | ForEach-Object -Parallel {
     $GeneratedMetadataPath = $_.GeneratedMetadataPath
     $outputFolder = $using:OutputFolder
 
-    Write-Host "Generating XRef map for version $version"
+    Write-Host "Generating XRef map for version $version | $GeneratedMetadataPath -> $outputFolder"
     $references = @()
     $files = Get-ChildItem -Path $GeneratedMetadataPath -Filter '*.yml'
     $references += $files | ForEach-Object -Parallel {
@@ -224,8 +227,8 @@ $metadataList | ForEach-Object -Parallel {
 
         $filePath = $_.FullName
         $referencesLocal = @()
-
         $firstLine = Get-Content $filePath -TotalCount 1
+
         if ($firstLine -eq "### YamlMime:ManagedReference") {
             $yaml = Get-Content $filePath -Raw | ConvertFrom-Yaml
             $items = $yaml.items
@@ -234,7 +237,7 @@ $metadataList | ForEach-Object -Parallel {
                 try {
                     $fullName = normalizeText $item.fullName
                     $name = normalizeText $item.name
-                    $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $version
+                    $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $using:version
 
                     if ($null -ne $href) {
                         Write-Host "$fullName -> $href"
@@ -255,7 +258,7 @@ $metadataList | ForEach-Object -Parallel {
         }
 
         return $referencesLocal
-    } -ThrottleLimit 100
+    }
 
     Write-Host "$version Sorting references"
 
@@ -270,10 +273,9 @@ $metadataList | ForEach-Object -Parallel {
 
     Write-Host "$version Writing XRef map to $outputFilePath"
     New-Item -ItemType Directory -Path (Split-Path $outputFilePath) -Force
-    Set-Content -Path $outputFolder -Value $xrefMapContent
+    Set-Content -Path $outputFilePath -Value $xrefMapContent
     Add-Content -Path "$outputFolder/index.html" -Value "<li><a href=""$relativeOutputFilePath"">$version</a></li>"
-
-} -ArgumentList $_, $outputFolder -ThrottleLimit 5
+}
 
 Add-Content -Path "$outputFolder/index.html" -Value "</ul></body></html>"
 Write-Host "Unity XRef maps generated successfully!"
