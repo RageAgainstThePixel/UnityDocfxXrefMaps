@@ -24,7 +24,7 @@ if (-not (Test-Path -Path $UnityCsReferenceLocalPath)) {
 }
 
 if (Test-Path -Path $OutputFolder) {
-    Remove-Item -Path $OutputFolder -Recurse -Force
+    Remove-Item -Path $OutputFolder -Recurse -Force | Out-Null
 }
 
 New-Item -ItemType Directory -Path $OutputFolder -Force
