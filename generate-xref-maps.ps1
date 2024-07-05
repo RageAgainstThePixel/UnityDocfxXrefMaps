@@ -237,7 +237,7 @@ foreach ($version in $versions) {
             return
         }
 
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -Path $versionFolder)) {
             Write-Error "DocFX metadata generation failed for $Version"
             return
         }
@@ -246,7 +246,7 @@ foreach ($version in $versions) {
         Write-Host "Metadata generation for $Version already exists. Skipping..."
     }
 
-    $versionMetadata +=  [PSCustomObject]@{
+    $versionMetadata += [PSCustomObject]@{
         Version      = $Version
         MetadataPath = $versionFolder
     }
