@@ -6,8 +6,6 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     exit 1
 }
 
-$ErrorActionPreference = "Stop"
-
 Write-Host "Generating Unity XRef maps"
 
 # Install the PowerShell-Yaml module if it's not already installed
@@ -253,6 +251,7 @@ $metadataList | ForEach-Object -Parallel {
                 }
                 catch {
                     Write-Error "Error processing item: $item `nDetails: $_"
+                    continue
                 }
             }
         }
