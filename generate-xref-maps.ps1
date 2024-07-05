@@ -234,7 +234,13 @@ foreach ($version in $versions) {
         Write-Host "Generating metadata for $Version..."
 
         try {
-            docfx metadata $DocfxPath --output $versionFolder --logLevel error
+            # for versions between 2019.1 and 2021.3 add Debug configuration property
+            if ($version -ge "2019.1" -and $version -lt "2021.3") {
+                docfx metadata $DocfxPath --output $versionFolder --logLevel error --property Configuration=Debug
+            }
+            else {
+                docfx metadata $DocfxPath --output $versionFolder --logLevel error
+            }
         }
         catch {
             Write-Error "Failed generating DocFX metadata for $Version `nDetails: $_"
