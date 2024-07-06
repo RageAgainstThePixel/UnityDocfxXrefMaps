@@ -30,7 +30,7 @@ jobs:
           BRANCHES=$(git -C UnityCSReference branch -r --list 'origin/*')
           echo "Branches: $BRANCHES"
           # get versions from branch names as json
-          VERSIONS=$(echo "$BRANCHES" | grep -E '^origin/[0-9]+\.[0-9]+$' | sed 's|origin/||g' | jq -R -s 'split("\n") | map(select(. != ""))')
+          VERSIONS=$(echo "$BRANCHES" | grep -E '^origin/[0-9]{4}\.[0-9]+(\.[0-9]+)*$' | sed 's|origin/||g' | jq -R -s 'split("\n") | map(select(. != ""))')
           echo "Unity versions: $VERSIONS"
           # if the array is empty, exit with error
           VERSIONS_LENGTH=$(echo "$VERSIONS" | jq '. | length')
