@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -xe
 
 generateXRefMap() {
     version=$1
