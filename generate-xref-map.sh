@@ -19,9 +19,23 @@ for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         yaml=$(yq eval '.' "$file" -o json)
+
+        # Debugging: Print the content of yaml
+        echo "YAML content for file $file:"
+        echo "$yaml"
+
         items=$(echo "$yaml" | jq -r '.items[]')
 
+        # Debugging: Check if items is properly retrieved
+        if [[ -z "$items" ]]; then
+            echo "No items found in the YAML content for file $file"
+            continue
+        fi
+
         while IFS= read -r item; do
+            # Debugging: Print the current item being processed
+            echo "Processing item: $item"
+
             fullName=$(echo "$item" | jq -r '.fullName | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
             name=$(echo "$item" | jq -r '.name | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
             uid=$(echo "$item" | jq -r '.uid')
