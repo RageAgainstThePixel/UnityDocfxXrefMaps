@@ -11,34 +11,68 @@ permissions:
 concurrency:
   group: unity-xref-maps
   cancel-in-progress: true
-env:
-  UNITY_VERSIONS: ''
 jobs:
   # enumerate all unity versions based on branch names of UnityCSReference repo
-  unity_versions:
+  get_unity_versions:
     runs-on: ubuntu-latest
+    outputs:
+      UNITY_VERSIONS: ${{ steps.get_unity_versions.outputs.UNITY_VERSIONS }}
     steps:
       - uses: actions/checkout@v4
         with:
           repository: Unity-Technologies/UnityCSReference
           fetch-depth: 0
           path: UnityCSReference
-      # get the unity versions from the branch names and drip origin/ prefix
-      - id: get-unity-versions
+      # get the unity versions from the branch names and drop origin/ prefix as json array
+      - id: get_unity_versions
         run: |
-          VERSIONS=$(git -C UnityCSReference branch -r --list 'origin/*' | sed 's/origin\///' | grep -E '^[0-9]+\.[0-9]+$' | sort -u | tr '\n' ',')
+          VERSIONS=$(git -C UnityCSReference branch -r --list 'origin/*' | sed 's/origin\///' | grep -E '^[0-9]+\.[0-9]+$' | sort -u | jq -R -s 'split("\n") | map(select(. != ""))')
           echo "UNITY_VERSIONS=$VERSIONS" >> $GITHUB_ENV
+          echo $VERSIONS | jq .
   # genearte docfx metadata for each unity version
   generate_metadata:
-    needs: unity_versions
+    needs: get_unity_versions
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        unity_version: ${{ env.UNITY_VERSIONS }}
+        unity_version: ${{ fromJSON(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
       - run: |
           dotnet tool install -g docfx
           echo ${{ matrix.unity_version }}
+          # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
+          if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
+            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error --configuration Debug
+          else
+            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error
+          fi
+
+          ${{ github.workspace }}/generate-xref-map.sh ${{ matrix.unity_version }} ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ${{ github.workspace }}/_site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xref-${{ matrix.unity_version }}
+          path: ${{ github.workspace }}/_site
+  # get the xref maps from the artifacts and publish them to gh-pages
+  publish_xref_maps:
+    needs: generate_metadata
+    runs-on: ubuntu-latest
+    steps:
+      # download all xref maps from the artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: xref-*
+      # generate index.html for the xref maps in _site
+      - run: |
+          echo "<html><head><title>Unity XRef Maps</title></head><body><h1>Unity XRef Maps</h1><ul>" > ${{ github.workspace }}/_site/index.html
+          for f in ${{ github.workspace }}/xref-*/index.html; do
+            # use relative path to _site and only show the version number in link text
+            echo "<li><a href=\"${f#${{ github.workspace }}/_site/}\">${f#${{ github.workspace }}/xref-}</a></li>" >> ${{ github.workspace }}/_site/index.html
+          done
+          echo "</ul></body></html>" >> ${{ github.workspace }}/_site/index.html
+      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/deploy-pages@v4
