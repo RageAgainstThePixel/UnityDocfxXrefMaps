@@ -29,6 +29,10 @@ jobs:
           # list all branches and remove origin/ prefix
           BRANCHES=$(git -C UnityCSReference branch -r)
           echo "Branches: $BRANCHES"
+          # remove origin/ prefix
+          UNITY_VERSIONS=$(echo $BRANCHES | sed 's/origin\///g' | jq -R -s 'split("\n") | map(select(. != ""))')
+          echo "Versions: $UNITY_VERSIONS"
+          echo "UNITY_VERSIONS=$UNITY_VERSIONS" >> $GITHUB_ENV
   # genearte docfx metadata for each unity version
   generate_metadata:
     needs: get_unity_versions
