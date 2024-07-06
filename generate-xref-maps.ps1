@@ -126,9 +126,10 @@ $versionMetadata | ForEach-Object -Parallel {
             [string]$outputFolder
         )
 
-        Write-Host "Generating XRef map for version $version | $GeneratedMetadataPath -> $outputFolder"
         $references = @()
         $files = Get-ChildItem -Path $GeneratedMetadataPath -Filter '*.yml'
+        $count = $files.Count
+        Write-Host "Generating XRef map for version $version | references: $count | $GeneratedMetadataPath -> $outputFolder"
         $references += $files | ForEach-Object -Parallel {
             function normalizeText {
                 param (
