@@ -7,11 +7,10 @@ generatedMetadataPath=$2
 outputFolder=$3
 references=()
 
-# Ensure yq and jq are installed
-if ! command -v yq &>/dev/null || ! command -v jq &>/dev/null; then
-    echo "Installing yq and jq..."
+# Ensure yq is installed
+if ! command -v yq &>/dev/null; then
+    echo "Installing yq..."
     pip install yq
-    sudo apt-get install -y jq
 fi
 
 files=$(find "$generatedMetadataPath" -name '*.yml')
@@ -22,17 +21,12 @@ for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         echo "Processing file: $file"
-        # Read YAML content and parse it as JSON
-        fileContent=$(cat "$file")
-        # Use yq to convert YAML to JSON, handle errors if invalid YAML
-        yaml=$(echo "$fileContent" | yq -r .)
-        # Debugging: Print converted JSON
-        echo "Converted JSON content: $yaml"
-        items=$(echo "$yaml" | jq -r '.items | to_entries[] | .value')
+
+        items=$(tail -n +1 "$file" | yq -r '.items[]')
 
         # Debugging: Check if items are properly retrieved
         if [[ -z "$items" ]]; then
-            echo "No items found in the JSON content for file $file"
+            echo "No items found in the YAML content for file $file"
             continue
         fi
 
@@ -40,14 +34,14 @@ for file in $files; do
             # Debugging: Print the current item being processed
             echo "Processing item: $item"
 
-            fullName=$(echo "$item" | jq -r '.fullName | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            name=$(echo "$item" | jq -r '.name | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            uid=$(echo "$item" | jq -r '.uid')
-            commentId=$(echo "$item" | jq -r '.commentId')
+            fullName=$(echo "$item" | yq -r '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            name=$(echo "$item" | yq -r '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            uid=$(echo "$item" | yq -r '.uid')
+            commentId=$(echo "$item" | yq -r '.commentId')
             href=$(rewriteHref "$uid" "$commentId" "$version")
 
             if [ -n "$href" ]; then
-                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
+                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | yq -r '.nameWithType')\"}")
                 echo "$fullName -> $href"
             else
                 echo "Failed to process item: $item"
@@ -56,9 +50,9 @@ for file in $files; do
     fi
 done
 
-# Convert references to JSON and then to YAML
-referencesJson=$(printf "%s\n" "${references[@]}" | jq -s '.')
-xrefMapContent=$(jq -n --argjson references "$referencesJson" '{ "### YamlMime:XRefMap": null, "sorted": true, "references": $references | sort_by(.uid) }' | yq -P)
+# Convert references to YAML
+referencesYaml=$(printf "%s\n" "${references[@]}" | jq -s '.' | yq -P)
+xrefMapContent=$(yq -n --arg references "$referencesYaml" "{ \"### YamlMime:XRefMap\": null, \"sorted\": true, \"references\": \$references | sort_by(.uid) }")
 outputFilePath="$outputFolder/$version/xrefmap.yml"
 mkdir -p "$(dirname "$outputFilePath")"
 echo "$xrefMapContent" >"$outputFilePath"
