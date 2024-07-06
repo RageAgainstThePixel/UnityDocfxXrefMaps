@@ -2,6 +2,11 @@
 
 set -xe
 
+# check if yq is installed
+if ! command -v yq &>/dev/null; then
+    pip install yq
+fi
+
 echo "Starting generate-xref-map.sh"
 echo "Version: $1"
 echo "Generated Metadata Path: $2"
