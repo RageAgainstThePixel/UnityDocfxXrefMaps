@@ -57,6 +57,12 @@ jobs:
             exit 1
           fi
 
+          # check if directoy exists
+          if [ ! -d ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ]; then
+            echo "No xref directory found for Unity version ${{ matrix.unity_version }}"
+            exit 1
+          fi
+
           # check if xref directory is not empty
           if [ ! "$(ls -A ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }})" ]; then
             echo "No metadata found for Unity version ${{ matrix.unity_version }}"
