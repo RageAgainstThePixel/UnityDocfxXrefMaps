@@ -228,6 +228,7 @@ $versionMetadata | ForEach-Object -Parallel {
                             $fullName = normalizeText $item.fullName
                             $name = normalizeText $item.name
                             $href = rewriteHref -uid $item.uid -commentId $item.commentId -version $using:ver
+                            # Write-Host "$fullName -> $href"
                             return [PSCustomObject]@{
                                 uid          = $item.uid
                                 name         = $name
@@ -242,7 +243,7 @@ $versionMetadata | ForEach-Object -Parallel {
                         }
 
                         return $null
-                    } -ThrottleLimit 1000 | Where-Object { $_ -ne $null }
+                    } | Where-Object { $_ -ne $null }
                 }
             }
             catch {
@@ -250,7 +251,7 @@ $versionMetadata | ForEach-Object -Parallel {
             }
 
             return $referencesLocal
-        } -ThrottleLimit 100
+        }
 
         $xrefMapContent = @{
             "### YamlMime:XRefMap" = $null
