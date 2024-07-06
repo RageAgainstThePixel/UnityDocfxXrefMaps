@@ -67,6 +67,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: xref-*
+          path: ${{ github.workspace }}/_site
+      # make sure the _site directory exists and is populated by the xref maps
+      - run: |
+          if [ ! -d ${{ github.workspace }}/_site ]; then
+            # fail the job if _site directory does not exist
+            echo "No xref maps found in _site directory"
+            exit 1
+          fi
+
+          ls -R ${{ github.workspace }}/_site
+
+          # check if _site directory is not empty
+          if [ ! "$(ls -R ${{ github.workspace }}/_site)" ]; then
+            # fail the job if _site directory is empty
+            echo "No xref maps found in _site directory"
+            exit 1
+          fi
       # generate index.html for the xref maps in _site
       - run: |
           echo "<html><head><title>Unity XRef Maps</title></head><body><h1>Unity XRef Maps</h1><ul>" > ${{ github.workspace }}/_site/index.html
