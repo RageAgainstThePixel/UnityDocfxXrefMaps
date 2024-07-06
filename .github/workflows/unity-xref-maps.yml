@@ -35,9 +35,8 @@ jobs:
     needs: get_unity_versions
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        unity_version: ${{ needs.get_unity_versions.outputs.UNITY_VERSIONS }}
+        unity_version: ${{ fromJson(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
