@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xe
+set -e
 
 echo "Starting generate-xref-map.sh"
 echo "Version: $1"
@@ -19,22 +19,9 @@ echo "Generating XRef map for Unity $version"
 for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
-        # Read YAML content
-        echo "Reading YAML file: "
-        echo "\`\`\`yaml"
-        cat "$file"
-        echo "\`\`\`"
-
-        yaml=$(yq eval '.' "$file" -o json)
-
-        # Debugging: Print the content of yaml
-        echo "YAML content for file $file:"
-        echo "$yaml"
-
-        # Extract items from YAML content
-        echo "Extracting items from YAML content"
-        echo "$yaml" | jq '.' # Print the JSON to verify it can be parsed
-
+        # Read YAML content and parse it as JSON
+        fileContent=$(cat "$file")
+        yaml=$(echo "$fileContent" | yq -r .)
         items=$(echo "$yaml" | jq -r '.items')
         if [[ -n "$items" ]]; then
             echo "Items found: $items"
@@ -58,8 +45,8 @@ for file in $files; do
             href=$(rewriteHref "$uid" "$commentId" "$version")
 
             if [ -n "$href" ]; then
-                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
                 echo "$fullName -> $href"
+                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
             else
                 echo "Failed to process item: $item"
             fi
