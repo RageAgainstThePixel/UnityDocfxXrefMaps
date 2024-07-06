@@ -29,12 +29,28 @@ for file in $files; do
         # Debugging: Print the raw file content
         echo "Raw file content: $fileContent"
 
-        yaml=$(echo "$fileContent" | yq -r .)
-        items=$(echo "$yaml" | jq -r '.items | to_entries[] | .value')
+        # Use yq to convert YAML to JSON, handle errors if invalid YAML
+        yaml=$(echo "$fileContent" | yq -r . 2>/dev/null)
+
+        if [ $? -ne 0 ]; then
+            echo "Error parsing YAML to JSON with yq for file $file"
+            continue
+        fi
+
+        # Debugging: Print converted JSON
+        echo "Converted JSON content: $yaml"
+
+        items=$(echo "$yaml" | jq -r '.items | to_entries[] | .value' 2>/dev/null)
+
+        # Handle errors if jq fails
+        if [ $? -ne 0 ]; then
+            echo "Error parsing items JSON with jq for file $file"
+            continue
+        fi
 
         # Debugging: Check if items are properly retrieved
         if [[ -z "$items" ]]; then
-            echo "No items found in the YAML content for file $file"
+            echo "No items found in the JSON content for file $file"
             continue
         fi
 
