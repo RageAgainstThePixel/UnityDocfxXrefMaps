@@ -29,7 +29,7 @@ jobs:
           BRANCHES=$(git -C UnityCSReference branch -r)
           VERSIONS=$(echo "$BRANCHES" | sed 's|origin/||g' | tr -s ' ' '\n' | jq -R -s 'split("\n") | map(select(. != ""))' | jq -c .)
           echo "Versions: $VERSIONS"
-          echo "UNITY_VERSIONS=$VERSIONS" >> $GITHUB_ENV
+          echo "UNITY_VERSIONS=$VERSIONS" >> "$GITHUB_OUTPUT"
   # genearte docfx metadata for each unity version
   generate_metadata:
     needs: get_unity_versions
