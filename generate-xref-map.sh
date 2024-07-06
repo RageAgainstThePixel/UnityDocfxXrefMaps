@@ -22,31 +22,13 @@ for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         echo "Processing file: $file"
-
         # Read YAML content and parse it as JSON
         fileContent=$(cat "$file")
-
-        # Debugging: Print the raw file content
-        echo "Raw file content: $fileContent"
-
         # Use yq to convert YAML to JSON, handle errors if invalid YAML
-        yaml=$(echo "$fileContent" | yq -r . 2>/dev/null)
-
-        if [ $? -ne 0 ]; then
-            echo "Error parsing YAML to JSON with yq for file $file"
-            continue
-        fi
-
+        yaml=$(echo "$fileContent" | yq -r .)
         # Debugging: Print converted JSON
         echo "Converted JSON content: $yaml"
-
-        items=$(echo "$yaml" | jq -r '.items | to_entries[] | .value' 2>/dev/null)
-
-        # Handle errors if jq fails
-        if [ $? -ne 0 ]; then
-            echo "Error parsing items JSON with jq for file $file"
-            continue
-        fi
+        items=$(echo "$yaml" | jq -r '.items | to_entries[] | .value')
 
         # Debugging: Check if items are properly retrieved
         if [[ -z "$items" ]]; then
