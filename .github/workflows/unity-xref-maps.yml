@@ -52,6 +52,7 @@ jobs:
             docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error
           fi
 
+          chmod +x ${{ github.workspace }}/generate-xref-map.sh
           ${{ github.workspace }}/generate-xref-map.sh ${{ matrix.unity_version }} ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ${{ github.workspace }}/_site
       - uses: actions/upload-artifact@v4
         with:
