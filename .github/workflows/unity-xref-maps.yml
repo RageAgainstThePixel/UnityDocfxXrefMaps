@@ -26,24 +26,10 @@ jobs:
       # get the unity versions from the branch names and drop origin/ prefix as json array
       - id: get_unity_versions
         run: |
-          # List all branches and capture the output
           BRANCHES=$(git -C UnityCSReference branch -r)
-          echo "Branches: $BRANCHES"
-
-          # Remove the 'origin/' prefix, split each branch into a new line, and preserve empty lines
-          CLEANED_BRANCHES=$(echo "$BRANCHES" | sed 's|origin/||g' | tr -s ' ' '\n')
-
-          # Display cleaned branches for debugging
-          echo "Cleaned Branches: $CLEANED_BRANCHES"
-
-          # Convert the multiline result into a proper JSON array
-          UNITY_VERSIONS=$(echo "$CLEANED_BRANCHES" | jq -R -s 'split("\n") | map(select(. != ""))')
-
-          # Display the unity versions for debugging purposes
-          echo "Versions: $UNITY_VERSIONS"
-
-          # Set the environment variable for later steps
-          echo "UNITY_VERSIONS=$UNITY_VERSIONS" >> $GITHUB_ENV
+          VERSIONS=$(echo "$BRANCHES" | sed 's|origin/||g' | tr -s ' ' '\n' | jq -R -s 'split("\n") | map(select(. != ""))')
+          echo "Versions: $VERSIONS"
+          echo "UNITY_VERSIONS=$VERSIONS" >> $GITHUB_ENV
   # genearte docfx metadata for each unity version
   generate_metadata:
     needs: get_unity_versions
