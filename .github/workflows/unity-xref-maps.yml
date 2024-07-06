@@ -26,15 +26,19 @@ jobs:
       # get the unity versions from the branch names and drop origin/ prefix as json array
       - id: get_unity_versions
         run: |
-          which jq || sudo apt-get install jq
-          VERSIONS=$(git -C UnityCSReference branch -r --list 'origin/*' | sed 's/origin\///' | grep -E '^[0-9]+\.[0-9]+$' | sort -u | jq -R -s 'split("\n") | map(select(. != ""))')
-          echo "UNITY_VERSIONS=$VERSIONS" >> $GITHUB_ENV
-          echo $VERSIONS | jq .
+          # list all branches
+          BRANCHES=$(git -C UnityCSReference branch -r --list 'origin/*')
+          echo "Branches: $BRANCHES"
+          # get versions from branch names as json
+          VERSIONS=$(echo $BRANCHES | jq -R 'split("\n") | map(select(. | test("origin/([0-9]+\\.[0-9]+)")) | . | sub("origin/"; ""))')
+          echo "Unity versions: $VERSIONS"
           # if the array is empty, exit with error
-          if [ $(echo $VERSIONS | jq length) -eq 0 ]; then
-            echo "No Unity versions found in UnityCSReference repo"
+          if [[ -z $VERSIONS ]]; then
+            echo "No Unity versions found"
             exit 1
           fi
+
+          echo "UNITY_VERSIONS=$VERSIONS" >> $GITHUB_ENV
   # genearte docfx metadata for each unity version
   generate_metadata:
     needs: get_unity_versions
