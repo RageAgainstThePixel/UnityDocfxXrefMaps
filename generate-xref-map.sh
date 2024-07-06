@@ -24,15 +24,25 @@ for file in $files; do
         echo "YAML content for file $file:"
         echo "$yaml"
 
-        items=$(echo "$yaml" | jq -r '.items[]')
+        # Check if the yaml content is valid JSON
+        if ! echo "$yaml" | jq . >/dev/null 2>&1; then
+            echo "Invalid JSON for file $file"
+            continue # Skip to the next file
+        fi
 
-        # Debugging: Check if items is properly retrieved
+        items=$(echo "$yaml" | jq -r '.items')
+
+        # Debugging: Check if items is properly retrieved and is an array
         if [[ -z "$items" ]]; then
             echo "No items found in the YAML content for file $file"
             continue
+        elif ! echo "$items" | jq -e 'type=="array"' >/dev/null; then
+            echo "Items is not an array in the YAML content for file $file"
+            continue
         fi
 
-        while IFS= read -r item; do
+        # Process items
+        echo "$items" | jq -r '.[]' | while IFS= read -r item; do
             # Debugging: Print the current item being processed
             echo "Processing item: $item"
 
@@ -48,7 +58,7 @@ for file in $files; do
             else
                 echo "Failed to process item: $item"
             fi
-        done <<<"$items"
+        done
     fi
 done
 
