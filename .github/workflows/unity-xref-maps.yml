@@ -11,17 +11,34 @@ permissions:
 concurrency:
   group: unity-xref-maps
   cancel-in-progress: true
+env:
+  UNITY_VERSIONS: ''
 jobs:
-  generate:
-    runs-on: windows-latest
+  # enumerate all unity versions based on branch names of UnityCSReference repo
+  unity_versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Unity-Technologies/UnityCSReference
+          fetch-depth: 0
+          path: UnityCSReference
+      # get the unity versions from the branch names and drip origin/ prefix
+      - id: get-unity-versions
+        run: |
+          VERSIONS=$(git -C UnityCSReference branch -r --list 'origin/*' | sed 's/origin\///' | grep -E '^[0-9]+\.[0-9]+$' | sort -u | tr '\n' ',')
+          echo "UNITY_VERSIONS=$VERSIONS" >> $GITHUB_ENV
+  # genearte docfx metadata for each unity version
+  generate_metadata:
+    needs: unity_versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        unity_version: ${{ env.UNITY_VERSIONS }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.x
       - run: |
-          dotnet tool update -g docfx
-          ./generate-xref-maps.ps1
-        shell: pwsh
-      - uses: actions/upload-pages-artifact@v3
-      - uses: actions/deploy-pages@v4
+          dotnet tool install -g docfx
+          echo ${{ matrix.unity_version }}
