@@ -247,7 +247,7 @@ $versionMetadata | ForEach-Object -Parallel {
             }
 
             return $referencesLocal
-        }
+        } -ThrottleLimit 500
 
         Write-Host "$version Sorting references"
 
@@ -264,6 +264,6 @@ $versionMetadata | ForEach-Object -Parallel {
     }
 
     generateXRefMap -version $_.Version -GeneratedMetadataPath $_.MetadataPath -outputFolder $using:OutputFolder
-}
+} -ThrottleLimit 25
 
 Write-Host "Unity XRef maps generated successfully!"
