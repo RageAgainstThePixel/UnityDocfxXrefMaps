@@ -43,7 +43,7 @@ jobs:
         with:
           repository: Unity-Technologies/UnityCSReference
           path: UnityCSReference
-          ref: 'origin/${{ matrix.unity_version }}'
+          ref: ${{ matrix.unity_version }}
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.x
