@@ -39,6 +39,11 @@ jobs:
         unity_version: ${{ fromJson(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Unity-Technologies/UnityCSReference
+          path: UnityCSReference
+          ref: 'origin/${{ matrix.unity_version }}'
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.x
@@ -47,9 +52,9 @@ jobs:
           mkdir -p ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
           if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
-            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel diagnostic --property Configuration=Debug
+            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error --property Configuration=Debug
           else
-            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel diagnostic
+            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error
           fi
 
           # check if metadata generation was successful
