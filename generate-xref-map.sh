@@ -2,11 +2,6 @@
 
 set -xe
 
-# check if yq is installed
-if ! command -v yq &>/dev/null; then
-    pip install yq
-fi
-
 echo "Starting generate-xref-map.sh"
 echo "Version: $1"
 echo "Generated Metadata Path: $2"
@@ -16,6 +11,7 @@ version=$1
 generatedMetadataPath=$2
 outputFolder=$3
 references=()
+
 files=$(find "$generatedMetadataPath" -name '*.yml')
 
 echo "Generating XRef map for Unity $version"
@@ -23,21 +19,35 @@ echo "Generating XRef map for Unity $version"
 for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
+        # Read YAML content
+        echo "Reading YAML file: "
+        echo "\`\`\`yaml"
+        cat "$file"
+        echo "\`\`\`"
+
         yaml=$(yq eval '.' "$file" -o json)
 
         # Debugging: Print the content of yaml
         echo "YAML content for file $file:"
         echo "$yaml"
 
-        items=$(echo "$yaml" | jq -r '.items[]')
+        # Extract items from YAML content
+        echo "Extracting items from YAML content"
+        echo "$yaml" | jq '.' # Print the JSON to verify it can be parsed
 
-        # Debugging: Check if items is properly retrieved
-        if [[ -z "$items" ]]; then
-            echo "No items found in the YAML content for file $file"
+        items=$(echo "$yaml" | jq -r '.items')
+        if [[ -n "$items" ]]; then
+            echo "Items found: $items"
+        else
+            echo "No items found in YAML content for file $file"
             continue
         fi
 
-        while IFS= read -r item; do
+        # Iterate over each item
+        itemsArray=$(echo "$items" | jq -c '.[]')
+        echo "Items Array: $itemsArray"
+
+        for item in $itemsArray; do
             # Debugging: Print the current item being processed
             echo "Processing item: $item"
 
@@ -53,7 +63,7 @@ for file in $files; do
             else
                 echo "Failed to process item: $item"
             fi
-        done <<<"$items"
+        done
     fi
 done
 
