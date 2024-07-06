@@ -1,4 +1,4 @@
-name: Generate Unity xref maps
+name: Generate Unity XRef Maps
 on:
   schedule:
     # do once a week at midnight on Sunday
