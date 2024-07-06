@@ -7,22 +7,6 @@ generatedMetadataPath=$2
 outputFolder=$3
 references=()
 
-# Ensure yq is installed
-if ! command -v yq &>/dev/null; then
-    echo "Installing yq..."
-    pip install yq
-fi
-
-files=$(find "$generatedMetadataPath" -name '*.yml')
-
-echo "Generating XRef map for Unity $version"
-
-validateUrl() {
-    url=$1
-    httpCode=$(curl -o /dev/null -s -w "%{http_code}\n" -I "$url")
-    [[ $httpCode -eq 200 ]]
-}
-
 rewriteHref() {
     uid=$1
     commentId=$2
@@ -69,35 +53,52 @@ rewriteHref() {
     fi
 }
 
+validateUrl() {
+    url=$1
+    httpCode=$(curl -o /dev/null -s -w "%{http_code}\n" -I "$url")
+    [[ $httpCode -eq 200 ]]
+}
+
+# Ensure yq is installed
+if ! command -v yq &>/dev/null; then
+    echo "Installing yq..."
+    pip install yq
+fi
+
+files=$(find "$generatedMetadataPath" -name '*.yml')
+
+echo "Generating XRef map for Unity $version"
+
 for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         echo "Processing file: $file"
-        items=$(tail -n +1 "$file" | yq -r '.items[]')
+        items=$(tail -n +1 "$file" | yq -r '.items')
 
-        # Debugging: Check if items are properly retrieved
         if [[ -z "$items" ]]; then
             echo "No items found in the YAML content for file $file"
             continue
         fi
 
-        while IFS= read -r item; do
-            # Debugging: Print the current item being processed
-            echo "Processing item: $item"
+        # Process each item in the items array
+        for item in $(echo "${items}" | jq -r '.[] | @base64'); do
+            _jq() {
+                echo "${item}" | base64 --decode | jq -r "${1}"
+            }
 
-            fullName=$(echo "$item" | yq -r '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            name=$(echo "$item" | yq -r '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            uid=$(echo "$item" | yq -r '.uid')
-            commentId=$(echo "$item" | yq -r '.commentId')
+            fullName=$(_jq '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            name=$(_jq '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            uid=$(_jq '.uid')
+            commentId=$(_jq '.commentId')
             href=$(rewriteHref "$uid" "$commentId" "$version")
 
             if [ -n "$href" ]; then
-                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | yq -r '.nameWithType')\"}")
+                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(_jq '.nameWithType')\"}")
                 echo "$fullName -> $href"
             else
-                echo "Failed to process item: $item"
+                echo "Failed to process item: $(_jq '.fullName')"
             fi
-        done <<<"$items"
+        done
     fi
 done
 
