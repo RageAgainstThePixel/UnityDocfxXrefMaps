@@ -11,6 +11,14 @@ version=$1
 generatedMetadataPath=$2
 outputFolder=$3
 references=()
+
+# Ensure yq and jq are installed
+if ! command -v yq &>/dev/null || ! command -v jq &>/dev/null; then
+    echo "Installing yq and jq..."
+    pip install yq
+    sudo apt-get install -y jq
+fi
+
 files=$(find "$generatedMetadataPath" -name '*.yml')
 
 echo "Generating XRef map for Unity $version"
@@ -18,12 +26,18 @@ echo "Generating XRef map for Unity $version"
 for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
+        echo "Processing file: $file"
+
         # Read YAML content and parse it as JSON
         fileContent=$(cat "$file")
-        yaml=$(echo "$fileContent" | yq -r .)
-        items=$(echo "$yaml" | jq -r '.items')
 
-        # Debugging: Check if items is properly retrieved
+        # Debugging: Print the raw file content
+        echo "Raw file content: $fileContent"
+
+        yaml=$(echo "$fileContent" | yq -r .)
+        items=$(echo "$yaml" | jq -r '.items | to_entries[] | .value')
+
+        # Debugging: Check if items are properly retrieved
         if [[ -z "$items" ]]; then
             echo "No items found in the YAML content for file $file"
             continue
