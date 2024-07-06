@@ -11,7 +11,6 @@ version=$1
 generatedMetadataPath=$2
 outputFolder=$3
 references=()
-
 files=$(find "$generatedMetadataPath" -name '*.yml')
 
 echo "Generating XRef map for Unity $version"
@@ -23,18 +22,14 @@ for file in $files; do
         fileContent=$(cat "$file")
         yaml=$(echo "$fileContent" | yq -r .)
         items=$(echo "$yaml" | jq -r '.items')
-        if [[ -n "$items" ]]; then
-            echo "Items found: $items"
-        else
-            echo "No items found in YAML content for file $file"
+
+        # Debugging: Check if items is properly retrieved
+        if [[ -z "$items" ]]; then
+            echo "No items found in the YAML content for file $file"
             continue
         fi
 
-        # Iterate over each item
-        itemsArray=$(echo "$items" | jq -c '.[]')
-        echo "Items Array: $itemsArray"
-
-        for item in $itemsArray; do
+        while IFS= read -r item; do
             # Debugging: Print the current item being processed
             echo "Processing item: $item"
 
@@ -45,12 +40,12 @@ for file in $files; do
             href=$(rewriteHref "$uid" "$commentId" "$version")
 
             if [ -n "$href" ]; then
-                echo "$fullName -> $href"
                 references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
+                echo "$fullName -> $href"
             else
                 echo "Failed to process item: $item"
             fi
-        done
+        done <<<"$items"
     fi
 done
 
