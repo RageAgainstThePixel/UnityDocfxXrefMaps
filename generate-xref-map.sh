@@ -2,46 +2,49 @@
 
 set -xe
 
-generateXRefMap() {
-    version=$1
-    generatedMetadataPath=$2
-    outputFolder=$3
-    references=()
-    files=$(find "$generatedMetadataPath" -name '*.yml')
+echo "Starting generate-xref-map.sh"
+echo "Version: $1"
+echo "Generated Metadata Path: $2"
+echo "Output Folder: $3"
 
-    echo "Generating XRef map for Unity $version"
+version=$1
+generatedMetadataPath=$2
+outputFolder=$3
+references=()
+files=$(find "$generatedMetadataPath" -name '*.yml')
 
-    for file in $files; do
-        firstLine=$(head -n 1 "$file")
-        if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
-            yaml=$(yq eval '.' "$file" -o json)
-            items=$(echo "$yaml" | jq -r '.items[]')
+echo "Generating XRef map for Unity $version"
 
-            while IFS= read -r item; do
-                fullName=$(echo "$item" | jq -r '.fullName | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-                name=$(echo "$item" | jq -r '.name | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-                uid=$(echo "$item" | jq -r '.uid')
-                commentId=$(echo "$item" | jq -r '.commentId')
-                href=$(rewriteHref "$uid" "$commentId" "$version")
+for file in $files; do
+    firstLine=$(head -n 1 "$file")
+    if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
+        yaml=$(yq eval '.' "$file" -o json)
+        items=$(echo "$yaml" | jq -r '.items[]')
 
-                if [ -n "$href" ]; then
-                    references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
-                    echo "$fullName -> $href"
-                else
-                    echo "Failed to process item: $item"
-                fi
-            done <<<"$items"
-        fi
-    done
+        while IFS= read -r item; do
+            fullName=$(echo "$item" | jq -r '.fullName | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            name=$(echo "$item" | jq -r '.name | select(. != null)' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            uid=$(echo "$item" | jq -r '.uid')
+            commentId=$(echo "$item" | jq -r '.commentId')
+            href=$(rewriteHref "$uid" "$commentId" "$version")
 
-    # Convert references to JSON and then to YAML
-    referencesJson=$(printf "%s\n" "${references[@]}" | jq -s '.')
-    xrefMapContent=$(jq -n --argjson references "$referencesJson" '{ "### YamlMime:XRefMap": null, "sorted": true, "references": $references | sort_by(.uid) }' | yq -P)
-    outputFilePath="$outputFolder/$version/xrefmap.yml"
-    mkdir -p "$(dirname "$outputFilePath")"
-    echo "$xrefMapContent" >"$outputFilePath"
-    echo "Unity $version XRef Map generated successfully!"
-}
+            if [ -n "$href" ]; then
+                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
+                echo "$fullName -> $href"
+            else
+                echo "Failed to process item: $item"
+            fi
+        done <<<"$items"
+    fi
+done
+
+# Convert references to JSON and then to YAML
+referencesJson=$(printf "%s\n" "${references[@]}" | jq -s '.')
+xrefMapContent=$(jq -n --argjson references "$referencesJson" '{ "### YamlMime:XRefMap": null, "sorted": true, "references": $references | sort_by(.uid) }' | yq -P)
+outputFilePath="$outputFolder/$version/xrefmap.yml"
+mkdir -p "$(dirname "$outputFilePath")"
+echo "$xrefMapContent" >"$outputFilePath"
+echo "Unity $version XRef Map generated successfully!"
 
 rewriteHref() {
     uid=$1
