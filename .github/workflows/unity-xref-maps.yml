@@ -27,7 +27,7 @@ jobs:
       - id: get_unity_versions
         run: |
           # list all branches and remove origin/ prefix
-          BRANCHES=$(git -C UnityCSReference branch -r) | sed 's/origin\///g'
+          BRANCHES=$(git -C UnityCSReference branch -r)
           echo "Branches: $BRANCHES"
   # genearte docfx metadata for each unity version
   generate_metadata:
