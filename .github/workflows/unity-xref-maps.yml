@@ -50,6 +50,7 @@ jobs:
       - run: |
           dotnet tool install -g docfx
 
+          echo "::group::DocFX metadata ${{ matrix.unity_version }}"
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
           if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
             docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error --property Configuration=Debug
@@ -75,6 +76,7 @@ jobs:
             exit 1
           fi
 
+          echo "::endgroup::"
           chmod +x ${{ github.workspace }}/generate-xref-map.sh
           ${{ github.workspace }}/generate-xref-map.sh ${{ matrix.unity_version }} ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ${{ github.workspace }}/_site
       - uses: actions/upload-artifact@v4

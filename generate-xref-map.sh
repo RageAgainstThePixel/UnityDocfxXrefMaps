@@ -2,11 +2,6 @@
 
 set -e
 
-echo "Starting generate-xref-map.sh"
-echo "Version: $1"
-echo "Generated Metadata Path: $2"
-echo "Output Folder: $3"
-
 version=$1
 generatedMetadataPath=$2
 outputFolder=$3
