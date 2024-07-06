@@ -9,7 +9,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 }
 
 if (-not (Get-Module -ListAvailable -Name PowerShell-Yaml)) {
-    Install-Module -Name PowerShell-Yaml -Force -Scope CurrentUser
+    Install-Module -Name PowerShell-Yaml -Force -Scope AllUsers
 }
 
 Import-Module -Name PowerShell-Yaml
