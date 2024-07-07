@@ -69,30 +69,29 @@ function generate_xref_map {
     references=()
 
     # Iterate over every YAML file in the generated metadata path
-    for file_path in "$generated_metadata_path"/*.yml; do
-        yq --exit-status 'tag == "!!map" or tag== "!!seq"' "$file_path" >/dev/null
+    for file in "$generated_metadata_path"/*.yml; do
+        yq --exit-status 'tag == "!!map" or tag== "!!seq"' "$file" >/dev/null
         # Validate if the file contains "### YamlMime:ManagedReference" on the first line
-        first_line=$(head -n 1 "$file_path")
+        first_line=$(head -n 1 "$file")
 
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
-            echo "Processing $file_path"
-            readarray items < <(yq eval -o=j -I=0 '.items[]' "$file_path")
+            echo "Processing $file"
+            readarray items < <(yq eval -o=j -I=0 '.items[]' "$file")
 
             if [[ ${#items[@]} -eq 0 ]]; then
-                echo "No items found in $file_path"
+                echo "No items found in $file"
                 continue
             fi
 
             for item in "${items[@]}"; do
                 echo "Processing item: $item"
-
-                full_name=$(normalize_text "$(echo "$item" | jq -r '.fullName')")
-                name=$(normalize_text "$(echo "$item" | jq -r '.name')")
-                uid=$(echo "$item" | jq -r '.uid')
-                comment_id=$(echo "$item" | jq -r '.commentId')
-                name_with_type=$(echo "$item" | jq -r '.nameWithType')
+                full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
+                name=$(normalize_text "$(echo "$item" | yq '.name')")
+                uid=$(echo "$item" | yq '.uid')
+                comment_id=$(echo "$item" | yq '.commentId')
+                name_with_type=$(echo "$item" | yq '.nameWithType')
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
-
+                echo "$full_name -> $href"
                 # Append result to references array as JSON objects (using jq for structured building)
                 references+=("$(jq -n \
                     --arg uid "$uid" \
