@@ -74,6 +74,7 @@ for file in $files; do
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         echo "Processing file: $file"
         items=$(tail -n +1 "$file" | yq -r '.items')
+        echo "Items content: $items"
 
         if [[ -z "$items" ]]; then
             echo "No items found in the YAML content for file $file"
@@ -82,21 +83,21 @@ for file in $files; do
 
         # Process each item in the items array
         for item in $(echo "${items}" | jq -r '.[] | @base64'); do
-            _jq() {
+            decodeItem() {
                 echo "${item}" | base64 --decode | jq -r "${1}"
             }
 
-            fullName=$(_jq '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            name=$(_jq '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            uid=$(_jq '.uid')
-            commentId=$(_jq '.commentId')
+            fullName=$(decodeItem '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            name=$(decodeItem '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            uid=$(decodeItem '.uid')
+            commentId=$(decodeItem '.commentId')
             href=$(rewriteHref "$uid" "$commentId" "$version")
 
             if [ -n "$href" ]; then
-                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(_jq '.nameWithType')\"}")
+                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(decodeItem '.nameWithType')\"}")
                 echo "$fullName -> $href"
             else
-                echo "Failed to process item: $(_jq '.fullName')"
+                echo "Failed to process item: $(decodeItem '.fullName')"
             fi
         done
     fi
