@@ -74,30 +74,25 @@ for file in $files; do
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         echo "Processing file: $file"
         items=$(tail -n +1 "$file" | yq -r '.items')
-        echo "Items content: $items"
 
         if [[ -z "$items" ]]; then
             echo "No items found in the YAML content for file $file"
             continue
         fi
 
-        # Process each item in the items array
-        for item in $(echo "${items}" | jq -r '.[] | @base64'); do
-            decodeItem() {
-                echo "${item}" | base64 --decode | jq -r "${1}"
-            }
-
-            fullName=$(decodeItem '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            name=$(decodeItem '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            uid=$(decodeItem '.uid')
-            commentId=$(decodeItem '.commentId')
+        for item in $(echo "${items}" | jq -c '.[]'); do
+            echo "Processing item: $item"
+            fullName=$(echo "$item" | jq -r '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            name=$(echo "$item" | jq -r '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
+            uid=$(echo "$item" | jq -r '.uid')
+            commentId=$(echo "$item" | jq -r '.commentId')
             href=$(rewriteHref "$uid" "$commentId" "$version")
 
             if [ -n "$href" ]; then
-                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(decodeItem '.nameWithType')\"}")
+                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
                 echo "$fullName -> $href"
             else
-                echo "Failed to process item: $(decodeItem '.fullName')"
+                echo "Failed to process item: $fullName"
             fi
         done
     fi
