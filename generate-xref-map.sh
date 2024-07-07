@@ -66,45 +66,55 @@ function generate_xref_map {
     local version="$1"
     local generated_metadata_path="$2"
     local output_folder="$3"
-
     references=()
 
+    # Iterate over every YAML file in the generated metadata path
     for file_path in "$generated_metadata_path"/*.yml; do
-        local first_line
+        yq --exit-status 'tag == "!!map" or tag== "!!seq"' "$file_path" >/dev/null
+        # Validate if the file contains "### YamlMime:ManagedReference" on the first line
         first_line=$(head -n 1 "$file_path")
 
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
             echo "Processing $file_path"
-            local yaml_content
-            yaml_content=$(tail -n +1 "$file_path")
-            local items
-            items=$(echo "$yaml_content" | yq eval '.items' -)
 
-            if [[ -n "$items" ]]; then
-                for item in $(echo "$items" | jq -c '.[]'); do
-                    local full_name name href
-                    full_name=$(normalize_text "$(echo "$item" | jq -r '.fullName')")
-                    name=$(normalize_text "$(echo "$item" | jq -r '.name')")
-                    href=$(rewrite_href "$(echo "$item" | jq -r '.uid')" "$(echo "$item" | jq -r '.commentId')" "$version")
-                    echo "$full_name -> $href"
-                    references+=("$(jq -n --arg uid "$(echo "$item" | jq -r '.uid')" \
-                        --arg name "$name" \
-                        --arg href "$href" \
-                        --arg commentId "$(echo "$item" | jq -r '.commentId')" \
-                        --arg fullName "$full_name" \
-                        --arg nameWithType "$(echo "$item" | jq -r '.nameWithType')" \
-                        '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
-                done
+            # Read items from the YAML file using yq
+            mapfile -t items < <(yq eval -o=json '.items[]' "$file_path")
+
+            # validate array of items is not null or empty
+            if [[ ${#items[@]} -eq 0 ]]; then
+                echo "No items found in $file_path"
+                continue
             fi
+
+            for item in "${items[@]}"; do
+                echo "Processing item: $item"
+
+                full_name=$(normalize_text "$(echo "$item" | jq -r '.fullName')")
+                name=$(normalize_text "$(echo "$item" | jq -r '.name')")
+                uid=$(echo "$item" | jq -r '.uid')
+                comment_id=$(echo "$item" | jq -r '.commentId')
+                name_with_type=$(echo "$item" | jq -r '.nameWithType')
+                href=$(rewrite_href "$uid" "$comment_id" "$version")
+
+                # Append result to references array as JSON objects (using jq for structured building)
+                references+=("$(jq -n \
+                    --arg uid "$uid" \
+                    --arg name "$name" \
+                    --arg href "$href" \
+                    --arg commentId "$comment_id" \
+                    --arg fullName "$full_name" \
+                    --arg nameWithType "$name_with_type" \
+                    '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
+            done
         fi
     done
 
-    local xref_map_content
+    # Compile all references data into the final output YAML
     xref_map_content=$(jq -n \
-        --arg version "$version" \
         --argjson references "$(printf '%s\n' "${references[@]}" | jq -s '.')" \
         '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }')
 
+    # Generate the output file
     local output_file_path="$output_folder/$version/xrefmap.yml"
     mkdir -p "$(dirname "$output_file_path")"
     echo "$xref_map_content" | yq eval -P >"$output_file_path"
