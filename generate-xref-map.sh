@@ -24,25 +24,30 @@ function rewrite_href {
     local href="$uid"
     local alt_href=""
 
+    # Trim namespaces
+    href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
+
     if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
     else
-        href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
         if [[ "$comment_id" =~ ^F:.* ]]; then
-            if [[ "$href" =~ \.([a-zA-Z][a-zA-Z0-9_]*)$ ]] && [[ "${BASH_REMATCH[1]}" =~ ^[a-z] ]]; then
-                href=$(echo "$href" | sed -E "s/\.${BASH_REMATCH[1]}/-${BASH_REMATCH[1]}/")
+            if [[ "$href" =~ \.([a-zA-Z][a-zA-Z0-9_]*)$ ]]; then
+                local last_part="${BASH_REMATCH[1]}"
+                if [[ "$last_part" =~ ^[a-z] ]]; then
+                    href="${href%."$last_part"}-$last_part"
+                fi
             fi
-        elif [[ "$comment_id" =~ ^P: ]]; then
-            href="${href%.*}-${href##*.}"
         elif [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             href="${href//\.#ctor/-ctor}"
-        elif [[ "$comment_id" =~ ^M: ]]; then
-            href="${href//$()[0-9]/}"
-            href="${href//\`/}"
-            href="${href%.*}-${href##*.}"
         else
-            href="${href//\`/}"
-            href="${href//\./-}"
+            href="${href//$()[0-9]/}" # Remove sequences like ``2
+            href="${href//\`/}"       # Remove backticks
+
+            if [[ ("$comment_id" =~ ^M:) || ("$comment_id" =~ ^(P|E):) ]]; then
+                if [[ "$href" =~ \. ]]; then
+                    href="${href%.*}-${href##*.}"
+                fi
+            fi
         fi
     fi
 
