@@ -70,26 +70,31 @@ files=$(find "$generatedMetadataPath" -name '*.yml')
 
 for file in $files; do
     echo "Processing file: $file"
-    echo "File content:"
-    cat "$file"
-    echo "End of file content"
 
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
-        echo "Processing file: $file"
-        items=$(tail -n +1 "$file" | yq -r '.items' || echo "null")
-        echo "Items content: $items"
+        fileContent=$(tail -n +1 "$file")
+        echo "Raw file content: $fileContent" # Debugging step 0
+
+        items=$($fileContent | yq -r '.items' 2>/dev/null)
+        echo "Raw items content: $items" # Debugging step 1
 
         if [[ "$items" == "null" || -z "$items" ]]; then
             echo "No valid items found in the YAML content for file $file"
             continue
         fi
 
-        for item in $(echo "${items}" | jq -c '.[]' 2>/dev/null); do
-            if [[ -z "$item" || "$item" == "null" ]]; then
-                echo "Skipping invalid item"
-                continue
-            fi
+        # Convert raw items to JSON array
+        itemsArray=$(echo "$items" | jq -c '.[]' 2>/dev/null)
+        echo "Items array: $itemsArray" # Debugging step 2
+
+        if [[ -z "$itemsArray" || "$itemsArray" == "null" ]]; then
+            echo "Items array is empty or invalid for file $file"
+            continue
+        fi
+
+        for item in $itemsArray; do
+            echo "Processing item: $item" # Debugging step 3
 
             fullName=$(echo "$item" | jq -r '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
             name=$(echo "$item" | jq -r '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
