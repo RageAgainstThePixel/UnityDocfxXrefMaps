@@ -40,10 +40,11 @@ function rewrite_href {
         elif [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             href="${href//\.#ctor/-ctor}"
         else
+            # This handles properties and methods
             href="${href//$()[0-9]/}" # Remove sequences like ``2
             href="${href//\`/}"       # Remove backticks
 
-            if [[ ("$comment_id" =~ ^M:) || ("$comment_id" =~ ^(P|E):) ]]; then
+            if [[ ("$comment_id" =~ ^M:.*) || ("$comment_id" =~ ^P:.*) || ("$comment_id" =~ ^E:.*) ]]; then
                 if [[ "$href" =~ \. ]]; then
                     href="${href%.*}-${href##*.}"
                 fi
