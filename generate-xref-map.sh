@@ -84,7 +84,6 @@ function generate_xref_map {
             fi
 
             for item in "${items[@]}"; do
-                echo "Processing item: $item"
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 uid=$(echo "$item" | yq '.uid')
