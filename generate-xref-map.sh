@@ -65,23 +65,32 @@ if ! command -v yq &>/dev/null; then
     pip install yq
 fi
 
+echo "Generating XRef map for Unity $version"
 files=$(find "$generatedMetadataPath" -name '*.yml')
 
-echo "Generating XRef map for Unity $version"
-
 for file in $files; do
+    echo "Processing file: $file"
+    echo "File content:"
+    cat "$file"
+    echo "End of file content"
+
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         echo "Processing file: $file"
-        items=$(tail -n +1 "$file" | yq -r '.items')
+        items=$(tail -n +1 "$file" | yq -r '.items' || echo "null")
+        echo "Items content: $items"
 
-        if [[ -z "$items" ]]; then
-            echo "No items found in the YAML content for file $file"
+        if [[ "$items" == "null" || -z "$items" ]]; then
+            echo "No valid items found in the YAML content for file $file"
             continue
         fi
 
-        for item in $(echo "${items}" | jq -c '.[]'); do
-            echo "Processing item: $item"
+        for item in $(echo "${items}" | jq -c '.[]' 2>/dev/null); do
+            if [[ -z "$item" || "$item" == "null" ]]; then
+                echo "Skipping invalid item"
+                continue
+            fi
+
             fullName=$(echo "$item" | jq -r '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
             name=$(echo "$item" | jq -r '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
             uid=$(echo "$item" | jq -r '.uid')
