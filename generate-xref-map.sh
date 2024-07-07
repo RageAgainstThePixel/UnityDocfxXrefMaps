@@ -2,120 +2,114 @@
 
 set -e
 
-version=$1
-generatedMetadataPath=$2
-outputFolder=$3
-references=()
+function normalize_text {
+    local text="$1"
+    text="${text%%[\(\<]*}"    # Remove everything after ( or <
+    text="${text//\`/_}"       # Replace ` with _
+    text="${text//#ctor/ctor}" # Replace #ctor with ctor
+    echo "$text"
+}
 
-rewriteHref() {
-    uid=$1
-    commentId=$2
-    version=$3
+function validate_url {
+    local url="$1"
+    status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
+    [[ "$status_code" -eq 200 ]]
+}
 
-    href=$uid
-    nsTrimRegex="^UnityEngine\.|^UnityEditor\."
+function rewrite_href {
+    local uid="$1"
+    local comment_id="$2"
+    local version="$3"
 
-    if [[ $commentId =~ ^N: ]]; then
+    local href="$uid"
+    local alt_href=""
+
+    if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
     else
-        href=$(echo "$href" | sed -E "s/$nsTrimRegex//")
-
-        if [[ $commentId =~ ^F:.* ]]; then
-            if [[ $href =~ \.([a-zA-Z][a-zA-Z0-9_]*)$ ]] && [[ ${BASH_REMATCH[1]} =~ ^[a-z] ]]; then
-                href=$(echo "$href" | sed -E "s/\.$(${BASH_REMATCH[1]})$/\-${BASH_REMATCH[1]}/")
+        href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
+        if [[ "$comment_id" =~ ^F:.* ]]; then
+            if [[ "$href" =~ \.([a-zA-Z][a-zA-Z0-9_]*)$ ]] && [[ "${BASH_REMATCH[1]}" =~ ^[a-z] ]]; then
+                href=$(echo "$href" | sed -E "s/\.${BASH_REMATCH[1]}/-${BASH_REMATCH[1]}/")
             fi
-        elif [[ $commentId =~ ^M:.*\.#ctor$ ]]; then
-            href=$(echo "$href" | sed -E "s/\.\#ctor$/-ctor/")
+        elif [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
+            href="${href//\.#ctor/-ctor}"
         else
-            href=$(echo "$href" | sed 's/``[0-9]//g' | sed 's/`//g')
-            if [[ $commentId =~ ^M: || $commentId =~ ^(P|E): ]] && [[ $href =~ \.[a-z] ]]; then
-                href=$(echo "$href" | sed -r "s/\.([a-zA-Z]+)$/-\1/")
+            href="${href//$()[0-9]/}"
+            href="${href//\`/}"
+            if [[ "$comment_id" =~ ^M:|^P:|^E: ]]; then
+                href="${href%.*}-${href##*.}"
             fi
         fi
     fi
 
-    url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$href.html"
-    if validateUrl "$url"; then
+    local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$href.html"
+
+    if validate_url "$url"; then
         echo "$url"
     else
-        if [[ $href =~ "-" ]]; then
-            altHref=${href//-/.}
+        if [[ "$href" =~ - ]]; then
+            alt_href="${href//-/\.}"
         else
-            altHref=${href//./-}
+            alt_href="${href//\./-}"
         fi
-
-        altUrl="https://docs.unity3d.com/$version/Documentation/ScriptReference/$altHref.html"
-        if validateUrl "$altUrl"; then
-            echo "$altUrl"
+        local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
+        if validate_url "$alt_url"; then
+            echo "$alt_url"
         else
             echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
         fi
     fi
 }
 
-validateUrl() {
-    url=$1
-    httpCode=$(curl -o /dev/null -s -w "%{http_code}\n" -I "$url")
-    [[ $httpCode -eq 200 ]]
+function generate_xref_map {
+    local version="$1"
+    local generated_metadata_path="$2"
+    local output_folder="$3"
+
+    references=()
+
+    for file_path in "$generated_metadata_path"/*.yml; do
+        local first_line
+        first_line=$(head -n 1 "$file_path")
+
+        if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
+            echo "Processing $file_path"
+            local yaml_content
+            yaml_content=$(cat "$file_path")
+            local items
+            items=$(echo "$yaml_content" | yq eval '.items' -)
+
+            if [[ -n "$items" ]]; then
+                for item in $(echo "$items" | jq -c '.[]'); do
+                    local full_name name href
+                    full_name=$(normalize_text "$(echo "$item" | jq -r '.fullName')")
+                    name=$(normalize_text "$(echo "$item" | jq -r '.name')")
+                    href=$(rewrite_href "$(echo "$item" | jq -r '.uid')" "$(echo "$item" | jq -r '.commentId')" "$version")
+                    echo "$full_name -> $href"
+                    references+=("$(jq -n --arg uid "$(echo "$item" | jq -r '.uid')" \
+                        --arg name "$name" \
+                        --arg href "$href" \
+                        --arg commentId "$(echo "$item" | jq -r '.commentId')" \
+                        --arg fullName "$full_name" \
+                        --arg nameWithType "$(echo "$item" | jq -r '.nameWithType')" \
+                        '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
+                done
+            fi
+        fi
+    done
+
+    local xref_map_content
+    xref_map_content=$(jq -n \
+        --arg version "$version" \
+        --argjson references "$(printf '%s\n' "${references[@]}" | jq -s '.')" \
+        '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }')
+
+    local output_file_path="$output_folder/$version/xrefmap.yml"
+    mkdir -p "$(dirname "$output_file_path")"
+    echo "$xref_map_content" | yq eval -P >"$output_file_path"
+
+    echo "Unity $version XRef Map generated successfully!"
 }
 
-# Ensure yq is installed
-if ! command -v yq &>/dev/null; then
-    echo "Installing yq..."
-    pip install yq
-fi
-
-echo "Generating XRef map for Unity $version"
-files=$(find "$generatedMetadataPath" -name '*.yml')
-
-for file in $files; do
-    echo "Processing file: $file"
-
-    firstLine=$(head -n 1 "$file")
-    if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
-        fileContent=$(tail -n +1 "$file")
-        # echo "Raw file content: $fileContent" # Debugging step 0
-
-        items=$($fileContent | yq -r '.items' 2>/dev/null)
-        echo "Raw items content: $items" # Debugging step 1
-
-        if [[ "$items" == "null" || -z "$items" ]]; then
-            echo "No valid items found in the YAML content for file $file"
-            continue
-        fi
-
-        # Convert raw items to JSON array
-        itemsArray=$(echo "$items" | jq -c '.[]' 2>/dev/null)
-        echo "Items array: $itemsArray" # Debugging step 2
-
-        if [[ -z "$itemsArray" || "$itemsArray" == "null" ]]; then
-            echo "Items array is empty or invalid for file $file"
-            continue
-        fi
-
-        for item in $itemsArray; do
-            echo "Processing item: $item" # Debugging step 3
-
-            fullName=$(echo "$item" | jq -r '.fullName' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            name=$(echo "$item" | jq -r '.name' | sed 's/[()<].*//g' | sed 's/`/_/g' | sed 's/#ctor/ctor/g')
-            uid=$(echo "$item" | jq -r '.uid')
-            commentId=$(echo "$item" | jq -r '.commentId')
-            href=$(rewriteHref "$uid" "$commentId" "$version")
-
-            if [ -n "$href" ]; then
-                references+=("{\"uid\": \"$uid\", \"name\": \"$name\", \"href\": \"$href\", \"commentId\": \"$commentId\", \"fullName\": \"$fullName\", \"nameWithType\": \"$(echo "$item" | jq -r '.nameWithType')\"}")
-                echo "$fullName -> $href"
-            else
-                echo "Failed to process item: $fullName"
-            fi
-        done
-    fi
-done
-
-# Convert references to YAML
-referencesYaml=$(printf "%s\n" "${references[@]}" | jq -s '.' | yq -P)
-xrefMapContent=$(yq -n --arg references "$referencesYaml" "{ \"### YamlMime:XRefMap\": null, \"sorted\": true, \"references\": \$references | sort_by(.uid) }")
-outputFilePath="$outputFolder/$version/xrefmap.yml"
-mkdir -p "$(dirname "$outputFilePath")"
-echo "$xrefMapContent" >"$outputFilePath"
-echo "Unity $version XRef Map generated successfully!"
+generate_xref_map "$1" "$2" "$3"
