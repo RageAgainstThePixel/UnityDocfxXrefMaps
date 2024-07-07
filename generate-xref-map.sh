@@ -74,7 +74,7 @@ for file in $files; do
     firstLine=$(head -n 1 "$file")
     if [[ "$firstLine" == "### YamlMime:ManagedReference" ]]; then
         fileContent=$(tail -n +1 "$file")
-        echo "Raw file content: $fileContent" # Debugging step 0
+        # echo "Raw file content: $fileContent" # Debugging step 0
 
         items=$($fileContent | yq -r '.items' 2>/dev/null)
         echo "Raw items content: $items" # Debugging step 1
