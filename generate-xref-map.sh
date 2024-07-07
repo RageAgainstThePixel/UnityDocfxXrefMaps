@@ -32,14 +32,17 @@ function rewrite_href {
             if [[ "$href" =~ \.([a-zA-Z][a-zA-Z0-9_]*)$ ]] && [[ "${BASH_REMATCH[1]}" =~ ^[a-z] ]]; then
                 href=$(echo "$href" | sed -E "s/\.${BASH_REMATCH[1]}/-${BASH_REMATCH[1]}/")
             fi
+        elif [[ "$comment_id" =~ ^P: ]]; then
+            href="${href%.*}-${href##*.}"
         elif [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             href="${href//\.#ctor/-ctor}"
-        else
+        elif [[ "$comment_id" =~ ^M: ]]; then
             href="${href//$()[0-9]/}"
             href="${href//\`/}"
-            if [[ "$comment_id" =~ ^M:|^P:|^E: ]]; then
-                href="${href%.*}-${href##*.}"
-            fi
+            href="${href%.*}-${href##*.}"
+        else
+            href="${href//\`/}"
+            href="${href//\./-}"
         fi
     fi
 
@@ -67,6 +70,7 @@ function generate_xref_map {
     local generated_metadata_path="$2"
     local output_folder="$3"
     references=()
+    processed_uids=()
 
     # Iterate over every YAML file in the generated metadata path
     for file in "$generated_metadata_path"/*.yml; do
@@ -84,9 +88,15 @@ function generate_xref_map {
             fi
 
             for item in "${items[@]}"; do
+                uid=$(echo "$item" | yq '.uid')
+
+                # Skip if the uid has already been processed
+                if [[ " ${processed_uids[*]} " =~ ${uid} ]]; then
+                    continue
+                fi
+
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
-                uid=$(echo "$item" | yq '.uid')
                 comment_id=$(echo "$item" | yq '.commentId')
                 name_with_type=$(echo "$item" | yq '.nameWithType')
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
@@ -100,6 +110,9 @@ function generate_xref_map {
                     --arg fullName "$full_name" \
                     --arg nameWithType "$name_with_type" \
                     '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
+
+                # Mark uid as processed
+                processed_uids+=("$uid")
             done
         fi
     done
