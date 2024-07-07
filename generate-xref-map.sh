@@ -76,11 +76,8 @@ function generate_xref_map {
 
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
             echo "Processing $file_path"
+            readarray items < <(yq eval -o=j -I=0 '.items[]' "$file_path")
 
-            # Read items from the YAML file using yq
-            mapfile -t items < <(yq eval -o=json '.items[]' "$file_path")
-
-            # validate array of items is not null or empty
             if [[ ${#items[@]} -eq 0 ]]; then
                 echo "No items found in $file_path"
                 continue
