@@ -76,7 +76,7 @@ function generate_xref_map {
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
             echo "Processing $file_path"
             local yaml_content
-            yaml_content=$(cat "$file_path")
+            yaml_content=$(tail -n +1 "$file_path")
             local items
             items=$(echo "$yaml_content" | yq eval '.items' -)
 
