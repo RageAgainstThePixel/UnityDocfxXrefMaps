@@ -22,57 +22,69 @@ function rewrite_href {
     local comment_id="$2"
     local version="$3"
 
-    echo "Processing [$uid] $comment_id"
-
     local href="$uid"
     local alt_href=""
 
     # Trim namespaces
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
+
     if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
     else
-        href="${href//$()[0-9]/}" # Remove sequences like ``2
-        href="${href//\`/}"       # Remove backticks
+        # Remove sequences and backticks
+        href="${href//$()[0-9]/}"
+        href="${href//\`/}"
+
+        # Regex to capture the last component for methods and properties
+        local base_part_regex="^(.*)\.(.*)$"
 
         if [[ "$comment_id" =~ ^F: ]]; then
-            # Field case
-            if [[ "$href" =~ \.([a-zA-Z][a-zA-Z0-9_]*)$ ]]; then
-                local last_part="${BASH_REMATCH[1]}"
+            # Field case, retain unchanged as before
+            if [[ "$href" =~ $base_part_regex ]]; then
+                local base_part="${BASH_REMATCH[1]}"
+                local last_part="${BASH_REMATCH[2]}"
                 if [[ "$last_part" =~ ^[a-z] ]]; then
-                    href="${href%."$last_part"}-$last_part"
+                    href="$base_part-$last_part"
                 fi
             fi
         elif [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             # Constructor case
             href="${href//\.#ctor/-ctor}"
-        elif [[ "$comment_id" =~ ^M: ]]; then
-            # Method case
-            if [[ "$href" =~ \.(.*)$ ]]; then
-                href="${href%.*}-${BASH_REMATCH[1]}"
-            fi
         elif [[ "$comment_id" =~ ^P: ]]; then
             # Property case
-            if [[ "$href" =~ \.(.*)$ ]]; then
-                href="${href%.*}-${BASH_REMATCH[1]}"
+            if [[ "$href" =~ $base_part_regex ]]; then
+                local base_part="${BASH_REMATCH[1]}"
+                local last_part="${BASH_REMATCH[2]}"
+                href="$base_part-$last_part"
+            fi
+        elif [[ "$comment_id" =~ ^M: ]]; then
+            # Method case
+            if [[ "$href" =~ $base_part_regex ]]; then
+                local base_part="${BASH_REMATCH[1]}"
+                local last_part="${BASH_REMATCH[2]}"
+                href="$base_part-$last_part"
             fi
         else
-            # General cases
-            if [[ "$href" =~ \.(.*)$ ]]; then
-                href="${href%.*}-${BASH_REMATCH[1]}"
-            fi
+            # For other cases, just adopt existing transformation logic for other IDs
+            href="${href//\./-}"
         fi
     fi
+
     local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$href.html"
+    echo "Validating $url" # Debug output to verify URL formation
+
     if validate_url "$url"; then
         echo "$url"
     else
+        # Reverse changes for alt_href to double-check URL formation
         if [[ "$href" =~ - ]]; then
             alt_href="${href//-/\.}"
         else
             alt_href="${href//\./-}"
         fi
         local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
+        echo "Validating $alt_url" # Debug output to verify Alt URL formation
+
         if validate_url "$alt_url"; then
             echo "$alt_url"
         else
@@ -92,7 +104,7 @@ function generate_xref_map {
         # Validate if the file contains "### YamlMime:ManagedReference" on the first line
         first_line=$(head -n 1 "$file")
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
-            echo "Processing $file"
+            # echo "Processing $file"
             readarray items < <(yq eval -o=j -I=0 '.items[]' "$file")
             if [[ ${#items[@]} -eq 0 ]]; then
                 echo "No items found in $file"
@@ -104,6 +116,7 @@ function generate_xref_map {
                 if [[ " ${processed_uids[*]} " =~ ${uid} ]]; then
                     continue
                 fi
+                echo "Processing $uid"
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 comment_id=$(echo "$item" | yq '.commentId')
