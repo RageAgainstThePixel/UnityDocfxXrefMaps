@@ -21,6 +21,7 @@ function rewrite_href {
     local uid="$1"
     local comment_id="$2"
     local version="$3"
+
     local href="$uid"
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
     if [[ "$comment_id" =~ ^N: ]]; then
@@ -59,16 +60,14 @@ function rewrite_href {
                 local last_part="${BASH_REMATCH[2]}"
                 href="$base_part-$last_part"
             fi
-        else
-            # For other cases, just adopt existing transformation logic for other IDs
-            href="${href//\./-}"
         fi
     fi
     local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${href}.html"
     if validate_url "$url"; then
         echo "$url"
     else
-        alt_href=$(echo "$href" | sed -E 's/\./-/g')
+        # Alt URL: replace only the last dot with a hyphen
+        alt_href=$(echo "$href" | awk 'BEGIN{FS=OFS="."} {sub(/\.[^.]*$/, "-&"); sub(/-./, ".&")}; 1')
         local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
         if validate_url "$alt_url"; then
             echo "$alt_url"
