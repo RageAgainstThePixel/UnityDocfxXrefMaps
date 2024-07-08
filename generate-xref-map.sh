@@ -32,34 +32,15 @@ function rewrite_href {
     else
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
-        # Handle generics by removing backticks and digits
-        href=$(echo "$href" | sed -E 's/`\d+//g')
+        # Handle generics by replacing backticks and digits
+        href=$(echo "$href" | sed -E 's/`[0-9]+/_/g')
         # Handle #ctor specifically
         if [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             href="${href//\.#ctor/-ctor}"
         fi
         # Regex to capture the last component for methods and properties
         local base_part_regex="^(.*)\.(.*)$"
-        if [[ "$comment_id" =~ ^F: ]]; then
-            # Field case
-            if [[ "$href" =~ $base_part_regex ]]; then
-                local base_part="${BASH_REMATCH[1]}"
-                local last_part="${BASH_REMATCH[2]}"
-                if [[ "$last_part" =~ ^[a-z] ]]; then
-                    parent_href="$base_part"
-                    href="$base_part-$last_part"
-                fi
-            fi
-        elif [[ "$comment_id" =~ ^P: ]]; then
-            # Property case
-            if [[ "$href" =~ $base_part_regex ]]; then
-                local base_part="${BASH_REMATCH[1]}"
-                local last_part="${BASH_REMATCH[2]}"
-                parent_href="$base_part"
-                href="$base_part-$last_part"
-            fi
-        elif [[ "$comment_id" =~ ^M: ]]; then
-            # Method case
+        if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: ]]; then
             if [[ "$href" =~ $base_part_regex ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
