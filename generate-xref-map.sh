@@ -23,7 +23,6 @@ function rewrite_href {
     local version="$3"
 
     local href="$uid"
-    local alt_href=""
 
     # Trim namespaces
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
@@ -74,24 +73,25 @@ function rewrite_href {
     fi
 
     local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$href.html"
-    echo "Validating $url" # Debug output to verify URL formation
 
     if validate_url "$url"; then
         echo "$url"
     else
         # Reverse changes for alt_href to double-check URL formation
-        if [[ "$href" =~ - ]]; then
-            alt_href="${href//-/\.}"
-        else
-            alt_href="${href//\./-}"
-        fi
+        alt_href=$(echo "$href" | sed -E 's/(.*)-/\1./')
         local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
-        echo "Validating $alt_url" # Debug output to verify Alt URL formation
 
         if validate_url "$alt_url"; then
             echo "$alt_url"
         else
-            echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
+            alt_href=$(echo "$href" | sed -E 's/(.*)\./\1-/')
+            alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
+
+            if validate_url "$alt_url"; then
+                echo "$alt_url"
+            else
+                echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
+            fi
         fi
     fi
 }
@@ -101,7 +101,6 @@ function generate_xref_map {
     local generated_metadata_path="$2"
     local output_folder="$3"
     references=()
-    processed_uids=()
     # Iterate over every YAML file in the generated metadata path
     for file in "$generated_metadata_path"/*.yml; do
         # Validate if the file contains "### YamlMime:ManagedReference" on the first line
@@ -115,17 +114,14 @@ function generate_xref_map {
             echo "::group::Processing $file"
             for item in "${items[@]}"; do
                 uid=$(echo "$item" | yq '.uid')
-                # Skip if the uid has already been processed
-                if [[ " ${processed_uids[*]} " =~ ${uid} ]]; then
-                    continue
-                fi
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 comment_id=$(echo "$item" | yq '.commentId')
                 name_with_type=$(echo "$item" | yq '.nameWithType')
-                echo "Processing $uid | $comment_id"
+                echo "::group::Processing $comment_id"
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
                 echo "$full_name -> $href"
+                echo "::endgroup::"
                 # Append result to references array as JSON objects (using jq for structured building)
                 references+=("$(jq -n \
                     --arg uid "$uid" \
@@ -135,9 +131,6 @@ function generate_xref_map {
                     --arg fullName "$full_name" \
                     --arg nameWithType "$name_with_type" \
                     '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
-
-                # Mark uid as processed
-                processed_uids+=("$uid")
             done
             echo "::endgroup::"
         fi
