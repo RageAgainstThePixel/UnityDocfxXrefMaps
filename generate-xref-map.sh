@@ -63,8 +63,8 @@ function rewrite_href {
     if validate_url "$url"; then
         echo "$url"
     else
-        # Alt URL: replace only the last dot with a hyphen
-        alt_href=${href/\./-}
+        # Alt URL: replace only the last hyphen with a dot
+        alt_href=${href/-/\.}
         local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
         if validate_url "$alt_url"; then
             echo "$alt_url"
