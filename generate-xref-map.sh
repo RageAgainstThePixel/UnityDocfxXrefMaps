@@ -12,6 +12,7 @@ function normalize_text {
 
 function validate_url {
     local url="$1"
+    echo "Validating $url"
     status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
     [[ "$status_code" -eq 200 ]]
 }
@@ -20,14 +21,19 @@ function rewrite_href {
     local uid="$1"
     local comment_id="$2"
     local version="$3"
+    local base_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/"
     local href="$uid"
     local parent_href=""
+    # Remove UnityEngine and UnityEditor namespaces
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
     if [[ "$comment_id" =~ ^N: ]]; then
-        href="index"
+        echo "${base_url}index.html"
+        return
     else
-        # Remove parameter list from method signatures and special characters
-        href=$(echo "$href" | sed -E 's/\(.*\)//' | sed -E 's/``[0-9]+//g' | sed 's/{[^}]*}//g')
+        # Remove parameter list from method signatures
+        href=$(echo "$href" | sed -E 's/\(.*\)//')
+        # Handle generics by replacing backticks with underscores
+        href=$(echo "$href" | sed -E 's/``[0-9]+/_/g')
         # Handle #ctor specifically
         if [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             href="${href//\.#ctor/-ctor}"
@@ -62,10 +68,9 @@ function rewrite_href {
             fi
         fi
     fi
-    alt_href=${href/-/\.}
-    local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${href}.html"
-    local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
-    local parent_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${parent_href}.html"
+    local url="${base_url}${href}.html"
+    local alt_url="${base_url}${href/-/\.}.html"
+    local parent_url="${base_url}${parent_href}.html"
     if validate_url "$url"; then
         echo "$url"
     elif validate_url "$alt_url"; then
@@ -73,7 +78,7 @@ function rewrite_href {
     elif validate_url "$parent_url"; then
         echo "$parent_url"
     else
-        echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
+        echo "${base_url}index.html"
     fi
 }
 
