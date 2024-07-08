@@ -32,23 +32,24 @@ function rewrite_href {
     else
         # Handle generics by replacing backticks and digits with an underscore
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
+        # Handle operators by replacing specific patterns
+        href=$(echo "$href" | sed -E 's/op_Implicit~/operator_/g')
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
-        # Regex to capture the last component for methods and properties
+        # Handle #ctor specifically
+        href="${href//\.#ctor/-ctor}"
         local base_part_regex="^(.*)\.(.*)$"
-        if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: ]]; then
+        if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: || "$comment_id" =~ ^E: ]]; then
             if [[ "$href" =~ $base_part_regex ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
                 parent_href="$base_part"
-                href="$base_part-$last_part"
+                href="$base_part.$last_part"
             fi
         fi
-        # Handle all .ctor specifically
-        href="${href//\.#ctor/-ctor}"
     fi
     local url="${base_url}${href}.html"
-    local alt_url="${base_url}${href/-/\.}.html"
+    local alt_url="${base_url}${href/\./-}.html"
     local parent_url="${base_url}${parent_href}.html"
     if validate_url "$url"; then
         echo "$url"
