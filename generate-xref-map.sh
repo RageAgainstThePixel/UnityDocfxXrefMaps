@@ -21,25 +21,18 @@ function rewrite_href {
     local uid="$1"
     local comment_id="$2"
     local version="$3"
-
     local href="$uid"
-
-    # Trim namespaces
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
-
     if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
     else
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
-
         # Remove sequences and backticks
         href="${href//$()[0-9]/}"
         href="${href//\`/}"
-
         # Regex to capture the last component for methods and properties
         local base_part_regex="^(.*)\.(.*)$"
-
         if [[ "$comment_id" =~ ^F: ]]; then
             # Field case
             if [[ "$href" =~ $base_part_regex ]]; then
@@ -71,16 +64,12 @@ function rewrite_href {
             href="${href//\./-}"
         fi
     fi
-
-    local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$href.html"
-
+    local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${href}.html"
     if validate_url "$url"; then
         echo "$url"
     else
-        # Generate Alt URL: revert the last occurrence of hyphen to period
-        alt_href=$(echo "$href" | sed -E 's/-([^.]+)$/.\1/')
-        local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
-
+        alt_href=$(echo "$href" | sed -E 's/\./-/g')
+        local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
         if validate_url "$alt_url"; then
             echo "$alt_url"
         else
@@ -111,10 +100,9 @@ function generate_xref_map {
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 comment_id=$(echo "$item" | yq '.commentId')
                 name_with_type=$(echo "$item" | yq '.nameWithType')
-                echo "::group::Processing $comment_id"
+                echo "Processing $comment_id"
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
                 echo "$full_name -> $href"
-                echo "::endgroup::"
                 # Append result to references array as JSON objects (using jq for structured building)
                 references+=("$(jq -n \
                     --arg uid "$uid" \
