@@ -21,6 +21,7 @@ function rewrite_href {
     local comment_id="$2"
     local version="$3"
     local href="$uid"
+    local parent_href=""
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
     if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
@@ -39,6 +40,7 @@ function rewrite_href {
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
                 if [[ "$last_part" =~ ^[a-z] ]]; then
+                    parent_href="$base_part"
                     href="$base_part-$last_part"
                 fi
             fi
@@ -47,6 +49,7 @@ function rewrite_href {
             if [[ "$href" =~ $base_part_regex ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
+                parent_href="$base_part"
                 href="$base_part-$last_part"
             fi
         elif [[ "$comment_id" =~ ^M: ]]; then
@@ -54,22 +57,23 @@ function rewrite_href {
             if [[ "$href" =~ $base_part_regex ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
+                parent_href="$base_part"
                 href="$base_part-$last_part"
             fi
         fi
     fi
+    alt_href=${href/-/\.}
     local url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${href}.html"
+    local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
+    local parent_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${parent_href}.html"
     if validate_url "$url"; then
         echo "$url"
+    elif validate_url "$alt_url"; then
+        echo "$alt_url"
+    elif validate_url "$parent_url"; then
+        echo "$parent_url"
     else
-        # Alt URL: replace only the last hyphen with a dot
-        alt_href=${href/-/\.}
-        local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
-        if validate_url "$alt_url"; then
-            echo "$alt_url"
-        else
-            echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
-        fi
+        echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
     fi
 }
 
