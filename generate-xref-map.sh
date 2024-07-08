@@ -32,8 +32,8 @@ function rewrite_href {
     else
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
-        # Handle generics by replacing backticks with underscores
-        href=$(echo "$href" | sed -E 's/``[0-9]+/_/g')
+        # Handle generics by removing backticks and digits
+        href=$(echo "$href" | sed -E 's/`\d+//g')
         # Handle #ctor specifically
         if [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
             href="${href//\.#ctor/-ctor}"
