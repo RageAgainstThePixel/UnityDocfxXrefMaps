@@ -34,10 +34,6 @@ function rewrite_href {
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
-        # Handle #ctor specifically
-        if [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
-            href="${href//\.#ctor/-ctor}"
-        fi
         # Regex to capture the last component for methods and properties
         local base_part_regex="^(.*)\.(.*)$"
         if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: ]]; then
@@ -48,6 +44,8 @@ function rewrite_href {
                 href="$base_part-$last_part"
             fi
         fi
+        # Handle all .ctor specifically
+        href="${href//\.#ctor/-ctor}"
     fi
     local url="${base_url}${href}.html"
     local alt_url="${base_url}${href/-/\.}.html"
