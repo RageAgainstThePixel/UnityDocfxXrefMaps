@@ -12,7 +12,6 @@ function normalize_text {
 
 function validate_url {
     local url="$1"
-    echo "Validating $url"
     status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
     [[ "$status_code" -eq 200 ]]
 }
