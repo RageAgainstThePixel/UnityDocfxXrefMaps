@@ -34,10 +34,10 @@ function rewrite_href {
         href="${href//\.#ctor/-ctor}"
         # Handle generics by replacing backticks and digits with an underscore
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
-        # Handle nested generics - remove everything after nested type name
+        # Remove nested generics
         href=$(echo "$href" | sed -E 's/``[0-9]+//g')
         # Handle operators by replacing specific patterns
-        href=$(echo "$href" | sed -E 's/op_Implicit~/operator_/g')
+        href=$(echo "$href" | sed -E 's/op_Implicit\(.*\)~(.*)/-operator_\1/g')
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
         local base_part_regex="^(.*)\.(.*)$"
