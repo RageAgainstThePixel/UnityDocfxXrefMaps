@@ -77,21 +77,14 @@ function rewrite_href {
     if validate_url "$url"; then
         echo "$url"
     else
-        # Reverse changes for alt_href to double-check URL formation
-        alt_href=$(echo "$href" | sed -E 's/(.*)-/\1./')
+        # Generate Alt URL: revert the last occurrence of hyphen to period
+        alt_href=$(echo "$href" | sed -E 's/-([^.]+)$/.\1/')
         local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
 
         if validate_url "$alt_url"; then
             echo "$alt_url"
         else
-            alt_href=$(echo "$href" | sed -E 's/(.*)\./\1-/')
-            alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/$alt_href.html"
-
-            if validate_url "$alt_url"; then
-                echo "$alt_url"
-            else
-                echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
-            fi
+            echo "https://docs.unity3d.com/$version/Documentation/ScriptReference/index.html"
         fi
     fi
 }
