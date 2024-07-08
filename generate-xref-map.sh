@@ -30,8 +30,8 @@ function rewrite_href {
         echo "${base_url}index.html"
         return
     else
-        # Handle generics by replacing backticks and digits
-        href=$(echo "$href" | sed -E 's/`[0-9]+/_/g')
+        # Handle generics by replacing backticks and digits with an underscore
+        href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
         # Remove parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\(.*\)//')
         # Handle #ctor specifically
