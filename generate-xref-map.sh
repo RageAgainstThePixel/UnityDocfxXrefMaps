@@ -21,17 +21,17 @@ function rewrite_href {
     local uid="$1"
     local comment_id="$2"
     local version="$3"
-
     local href="$uid"
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
     if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
     else
-        # Remove parameter list from method signatures
-        href=$(echo "$href" | sed -E 's/\(.*\)//')
-        # Remove sequences and backticks
-        href="${href//$()[0-9]/}"
-        href="${href//\`/}"
+        # Remove parameter list from method signatures and special characters
+        href=$(echo "$href" | sed -E 's/\(.*\)//' | sed -E 's/``[0-9]+//g' | sed 's/{[^}]*}//g')
+        # Handle #ctor specifically
+        if [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
+            href="${href//\.#ctor/-ctor}"
+        fi
         # Regex to capture the last component for methods and properties
         local base_part_regex="^(.*)\.(.*)$"
         if [[ "$comment_id" =~ ^F: ]]; then
@@ -43,9 +43,6 @@ function rewrite_href {
                     href="$base_part-$last_part"
                 fi
             fi
-        elif [[ "$comment_id" =~ ^M:.*\.#ctor$ ]]; then
-            # Constructor case
-            href="${href//\.#ctor/-ctor}"
         elif [[ "$comment_id" =~ ^P: ]]; then
             # Property case
             if [[ "$href" =~ $base_part_regex ]]; then
@@ -67,7 +64,7 @@ function rewrite_href {
         echo "$url"
     else
         # Alt URL: replace only the last dot with a hyphen
-        alt_href=$(echo "$href" | awk 'BEGIN{FS=OFS="."} {sub(/\.[^.]*$/, "-&"); sub(/-./, ".&")}; 1')
+        alt_href=${href/\./-}
         local alt_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/${alt_href}.html"
         if validate_url "$alt_url"; then
             echo "$alt_url"
