@@ -31,6 +31,9 @@ function rewrite_href {
     if [[ "$comment_id" =~ ^N: ]]; then
         href="index"
     else
+        # Remove parameter list from method signatures
+        href=$(echo "$href" | sed -E 's/\(.*\)//')
+
         # Remove sequences and backticks
         href="${href//$()[0-9]/}"
         href="${href//\`/}"
@@ -39,7 +42,7 @@ function rewrite_href {
         local base_part_regex="^(.*)\.(.*)$"
 
         if [[ "$comment_id" =~ ^F: ]]; then
-            # Field case, retain unchanged as before
+            # Field case
             if [[ "$href" =~ $base_part_regex ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
@@ -104,23 +107,23 @@ function generate_xref_map {
         # Validate if the file contains "### YamlMime:ManagedReference" on the first line
         first_line=$(head -n 1 "$file")
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
-            # echo "Processing $file"
             readarray items < <(yq eval -o=j -I=0 '.items[]' "$file")
             if [[ ${#items[@]} -eq 0 ]]; then
                 echo "No items found in $file"
                 continue
             fi
+            echo "::group::Processing $file"
             for item in "${items[@]}"; do
                 uid=$(echo "$item" | yq '.uid')
                 # Skip if the uid has already been processed
                 if [[ " ${processed_uids[*]} " =~ ${uid} ]]; then
                     continue
                 fi
-                echo "Processing $uid"
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 comment_id=$(echo "$item" | yq '.commentId')
                 name_with_type=$(echo "$item" | yq '.nameWithType')
+                echo "Processing $uid | $comment_id"
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
                 echo "$full_name -> $href"
                 # Append result to references array as JSON objects (using jq for structured building)
@@ -136,6 +139,7 @@ function generate_xref_map {
                 # Mark uid as processed
                 processed_uids+=("$uid")
             done
+            echo "::endgroup::"
         fi
     done
     # Compile all references data into the final output YAML
