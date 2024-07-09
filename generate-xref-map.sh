@@ -29,13 +29,13 @@ function rewrite_href {
     local href="$uid"
     local alt_href=""
     local parent_href=""
-    # Remove UnityEngine and UnityEditor namespaces
-    href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
     if [[ "$comment_id" =~ ^N: ]]; then
         echo "${base_url}index.html"
         return
     else
-        # Handle #ctor specifically
+        # Remove UnityEngine and UnityEditor namespaces
+        href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
+        # Handle #ctor
         href="${href//\.#ctor/-ctor}"
         # Convert op_Implicit and capture the parameter type without the namespace or contents inside { }, and add T to the end
         if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
@@ -76,12 +76,14 @@ function rewrite_href {
             fi
         fi
     fi
-    # Handle alternative hrefs
-    if [[ "$href" =~ -ctor$ ]]; then
-        alt_href=$(echo "$href" | sed -E 's/-ctor$//')
+    if [[ "$href" =~ -ctor ]]; then
+        # remove -ctor and everything after -ctor
+        alt_href=$(echo "$href" | sed -E 's/-ctor.*//')
     elif [[ "$href" =~ -operator ]]; then
-        alt_href=$(echo "$href" | sed -E 's/-operator//')
+        # remove -operator and everything after -operator
+        alt_href=$(echo "$href" | sed -E 's/-operator.*//')
     else
+        # else replace . with -
         alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
     fi
     local url="${base_url}${href}.html"
