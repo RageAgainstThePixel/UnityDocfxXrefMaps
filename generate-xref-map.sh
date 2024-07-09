@@ -13,10 +13,8 @@ function normalize_text {
 function validate_url {
     local url="$1"
     status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
-    if [[ "$status_code" -eq 200 ]]; then
+    if [[ "$status_code" -ne 200 ]]; then
         echo -e "\e[32mValidating $url - Status: $status_code OK\e[0m" >&2
-    else
-        echo -e "\e[33mValidating $url - Status: $status_code FAIL\e[0m" >&2
     fi
     [[ "$status_code" -eq 200 ]]
 }
@@ -112,7 +110,8 @@ function generate_xref_map {
     local version="$1"
     local generated_metadata_path="$2"
     local output_folder="$3"
-    references=()
+    local output_file="$output_folder/$version/xrefmap.yml"
+    local references=()
     # Iterate over every YAML file in the generated metadata path
     for file in "$generated_metadata_path"/*.yml; do
         # Validate if the file contains "### YamlMime:ManagedReference" on the first line
@@ -124,34 +123,38 @@ function generate_xref_map {
                 continue
             fi
             for item in "${items[@]}"; do
+                local reference
                 uid=$(echo "$item" | yq '.uid')
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 comment_id=$(echo "$item" | yq '.commentId')
                 name_with_type=$(echo "$item" | yq '.nameWithType')
-                echo "Processing $comment_id"
+                # echo "Processing $comment_id"
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
-                echo "$full_name -> $href"
-                # Append result to references array as JSON objects (using jq for structured building)
-                references+=("$(jq -n \
+                echo "$comment_id -> $href"
+                # Build JSON entry and append to references array
+                # shellcheck disable=SC2016
+                reference=$(yq eval -n \
                     --arg uid "$uid" \
                     --arg name "$name" \
                     --arg href "$href" \
                     --arg commentId "$comment_id" \
                     --arg fullName "$full_name" \
                     --arg nameWithType "$name_with_type" \
-                    '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
+                    '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')
+                references+=("$reference")
             done
         fi
     done
+    # Sort the references array
+    sorted_references=$(printf '%s\n' "${references[@]}" | yq -s '.' | yq eval 'sort_by(.uid)')
     # Compile all references data into the final output YAML
-    xref_map_content=$(jq -n \
-        --argjson references "$(printf '%s\n' "${references[@]}" | jq -s '.')" \
+    # shellcheck disable=SC2016
+    xref_map_content=$(yq eval -n -P \
+        --argjson references "$sorted_references" \
         '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }')
-    # Generate the output file
-    local output_file_path="$output_folder/$version/xrefmap.yml"
-    mkdir -p "$(dirname "$output_file_path")"
-    echo "$xref_map_content" | yq eval -P >"$output_file_path"
+    mkdir -p "$(dirname "$output_file")"
+    echo "$xref_map_content" >"$output_file"
     echo "Unity $version XRef Map generated successfully!"
 }
 

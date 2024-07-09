@@ -48,9 +48,9 @@ jobs:
         with:
           dotnet-version: 8.x
       - run: |
+          echo "::group::DocFX metadata ${{ matrix.unity_version }}"
           dotnet tool install -g docfx
 
-          echo "::group::DocFX metadata ${{ matrix.unity_version }}"
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
           if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
             docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error --property Configuration=Debug
@@ -85,13 +85,15 @@ jobs:
         with:
           retention-days: 1
           name: xref-${{ matrix.unity_version }}
-          path: ${{ github.workspace }}/_site
+          path: ${{ github.workspace }}/_site/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           retention-days: 1
           name: ${{ matrix.unity_version }}-metadata
-          path: ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}
+          path: |
+            ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}/
+            ${{ github.workspace }}/_site/
   # get the xref maps from the artifacts and publish them to gh-pages
   publish_xref_maps:
     needs: generate_metadata
@@ -101,7 +103,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: xref-*
-          path: ${{ github.workspace }}/_site
+          path: ${{ github.workspace }}/_site/
       # make sure the _site directory exists and is populated by the xref maps
       - run: |
           if [ ! -d ${{ github.workspace }}/_site ]; then
