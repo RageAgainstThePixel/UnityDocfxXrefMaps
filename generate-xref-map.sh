@@ -78,10 +78,10 @@ function rewrite_href {
     fi
     if [[ "$href" =~ -ctor ]]; then
         # remove -ctor and everything after -ctor
-        alt_href=$(echo "$href" | sed -E 's/-ctor.*//')
+        alt_href=$(echo "$href" | sed -E 's/-ctor.*//g')
     elif [[ "$href" =~ -operator ]]; then
         # remove -operator and everything after -operator
-        alt_href=$(echo "$href" | sed -E 's/-operator.*//')
+        alt_href=$(echo "$href" | sed -E 's/-operator.*//g')
     else
         # else replace . with -
         alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
