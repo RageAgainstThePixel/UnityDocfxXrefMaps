@@ -32,15 +32,14 @@ function rewrite_href {
     else
         # Handle #ctor specifically
         href="${href//\.#ctor/-ctor}"
-        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { } and add T to the end.
-        href=$(echo "$href" | sed -E 's/\.op_Implicit\([^\{]*\{?[^}]*\}?\).*$/-operator_\1T/g')
-        # Handle generics by replacing backticks and digits with an underscore
+        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { } and add T to the end
+        href=$(echo "$href" | sed -E 's/\.op_Implicit\(([^{}]*)\{?[^}]*\}?\).*$/-operator_\1T/g')
+        # Handle generics by replacing backticks and digits with a underscore
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
         # Handle nested generics by removing everything after any number of backticks and a digit
         href=$(echo "$href" | sed -E 's/`[0-9]+.*//g')
         # Remove everything between { } and parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\{[^}]*\}|\(.*\)//g')
-
         local base_part_regex="^(.*)\.(.*)$"
         if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: || "$comment_id" =~ ^E: ]]; then
             if [[ "$href" =~ $base_part_regex ]]; then
