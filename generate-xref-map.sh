@@ -123,7 +123,6 @@ function generate_xref_map {
                 echo "No items found in $file"
                 continue
             fi
-            echo "Processing $file"
             for item in "${items[@]}"; do
                 uid=$(echo "$item" | yq '.uid')
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
