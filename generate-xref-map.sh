@@ -23,6 +23,7 @@ function rewrite_href {
     local version="$3"
     local base_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/"
     local href="$uid"
+    local alt_href=""
     local parent_href=""
     # Remove UnityEngine and UnityEditor namespaces
     href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
@@ -32,14 +33,19 @@ function rewrite_href {
     else
         # Handle #ctor specifically
         href="${href//\.#ctor/-ctor}"
-        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { } and add T to the end
-        href=$(echo "$href" | sed -E 's/\.op_Implicit\(([^{}]*)\{?[^}]*\}?\).*$/-operator_\1T/g')
-        # Handle generics by replacing backticks and digits with a underscore
+        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { } and add T to the end.
+        if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
+            local param="${BASH_REMATCH[1]}"
+            param=$(echo "$param" | sed -E 's/.*\.//g') # Strip the namespace
+            href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/")
+        fi
+        # Handle generics by replacing backticks and digits with an underscore
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
         # Handle nested generics by removing everything after any number of backticks and a digit
         href=$(echo "$href" | sed -E 's/`[0-9]+.*//g')
         # Remove everything between { } and parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\{[^}]*\}|\(.*\)//g')
+        # Regex to match the base part and the last part by the last dot
         local base_part_regex="^(.*)\.(.*)$"
         if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: || "$comment_id" =~ ^E: ]]; then
             if [[ "$href" =~ $base_part_regex ]]; then
@@ -51,7 +57,9 @@ function rewrite_href {
         fi
     fi
     local url="${base_url}${href}.html"
-    local alt_url="${base_url}${href/\./-}.html"
+    # Replace the last instance of `.` with `-` to form `alt_url`
+    alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
+    local alt_url="${base_url}${alt_href}.html"
     local parent_url="${base_url}${parent_href}.html"
     if validate_url "$url"; then
         echo "$url"
