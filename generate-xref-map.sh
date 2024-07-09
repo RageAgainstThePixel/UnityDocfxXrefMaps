@@ -60,8 +60,8 @@ function rewrite_href {
                 # Rewrite greater than operator and remove everything after gt
                 href=$(echo "$href" | sed -E 's/\.op_GreaterThan/-operator_gt/; s/(gt).*/\1/')
             else
-                # replace operator and just change operator name to lowercase
-                href=$(echo "$href" | sed -E 's/\.op_/-operator_/; s/([A-Z])/\L\1/g')
+                # replace operator and just change only the operator name to lowercase
+                href=$(echo "$href" | sed -E 's/\.op_([A-Z])/\L-operator_\1/g')
             fi
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
