@@ -12,8 +12,12 @@ function normalize_text {
 
 function validate_url {
     local url="$1"
-    echo "Validating $url"
     status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
+    if [[ "$status_code" -eq 200 ]]; then
+        echo -e "\e[32mValidating $url - Status: $status_code OK\e[0m" >&2
+    else
+        echo -e "\e[33mValidating $url - Status: $status_code FAIL\e[0m" >&2
+    fi
     [[ "$status_code" -eq 200 ]]
 }
 
@@ -56,9 +60,9 @@ function rewrite_href {
             fi
         fi
     fi
-    local url="${base_url}${href}.html"
     # Replace the last instance of `.` with `-` to form `alt_url`
     alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
+    local url="${base_url}${href}.html"
     local alt_url="${base_url}${alt_href}.html"
     local parent_url="${base_url}${parent_href}.html"
     if validate_url "$url"; then
