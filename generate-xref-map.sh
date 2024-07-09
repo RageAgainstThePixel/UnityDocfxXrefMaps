@@ -37,13 +37,27 @@ function rewrite_href {
     else
         # Handle #ctor specifically
         href="${href//\.#ctor/-ctor}"
-        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { } and add T to the end
+        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { }, and add T to the end
         if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
             local param="${BASH_REMATCH[1]}"
             # Strip the namespace in parameter name
             param=$(echo "$param" | sed -E 's/.*\.//g')
             # Rewrite implicit operator and append T to the end, and remove everything after T
             href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
+        fi
+        # Convert any other operator
+        if [[ "$href" =~ \.op_ ]]; then
+            if [[ "$href" =~ \.op_Equality ]]; then
+                href=$(echo "$href" | sed -E 's/\.op_Equality/-operator_eq/; s/(eq).*/\1/')
+            elif [[ "$href" =~ \.op_Inequality ]]; then
+                href=$(echo "$href" | sed -E 's/\.op_Inequality/-operator_ne/; s/(ne).*/\1/')
+            elif [[ "$href" =~ \.op_LessThan ]]; then
+                href=$(echo "$href" | sed -E 's/\.op_LessThan/-operator_lt/; s/(lt).*/\1/')
+            elif [[ "$href" =~ \.op_GreaterThan ]]; then
+                href=$(echo "$href" | sed -E 's/\.op_GreaterThan/-operator_gt/; s/(gt).*/\1/')
+            else
+                href=$(echo "$href" | sed -E 's/\.op_/-operator_/; s/(operator_)(.*)/\1\L\2/; s/([a-z]+).*/\1/')
+            fi
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
         href=$(echo "$href" | sed -E 's/[`]{2,}[0-9]+//g')
@@ -62,11 +76,12 @@ function rewrite_href {
             fi
         fi
     fi
-    # if href contains -ctor then drop -ctor for alt_href
+    # Handle alternative hrefs
     if [[ "$href" =~ -ctor$ ]]; then
         alt_href=$(echo "$href" | sed -E 's/-ctor$//')
+    elif [[ "$href" =~ -operator ]]; then
+        alt_href=$(echo "$href" | sed -E 's/-operator//')
     else
-        # Replace the last instance of `.` with `-` to form `alt_url`
         alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
     fi
     local url="${base_url}${href}.html"
