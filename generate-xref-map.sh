@@ -45,18 +45,23 @@ function rewrite_href {
             # Rewrite implicit operator and append T to the end, and remove everything after T
             href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
         fi
-        # Convert any other operator
+        # Convert any other operators
         if [[ "$href" =~ \.op_ ]]; then
             if [[ "$href" =~ \.op_Equality ]]; then
+                # Rewrite equality operator and remove everything after eq
                 href=$(echo "$href" | sed -E 's/\.op_Equality/-operator_eq/; s/(eq).*/\1/')
             elif [[ "$href" =~ \.op_Inequality ]]; then
+                # Rewrite inequality operator and remove everything after ne
                 href=$(echo "$href" | sed -E 's/\.op_Inequality/-operator_ne/; s/(ne).*/\1/')
             elif [[ "$href" =~ \.op_LessThan ]]; then
+                # Rewrite less than operator and remove everything after lt
                 href=$(echo "$href" | sed -E 's/\.op_LessThan/-operator_lt/; s/(lt).*/\1/')
             elif [[ "$href" =~ \.op_GreaterThan ]]; then
+                # Rewrite greater than operator and remove everything after gt
                 href=$(echo "$href" | sed -E 's/\.op_GreaterThan/-operator_gt/; s/(gt).*/\1/')
             else
-                href=$(echo "$href" | sed -E 's/\.op_/-operator_/; s/(operator_)(.*)/\1\L\2/; s/([a-z]+).*/\1/')
+                # replace operator and just change operator name to lowercase
+                href=$(echo "$href" | sed -E 's/\.op_/-operator_/; s/([A-Z])/\L\1/g')
             fi
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
