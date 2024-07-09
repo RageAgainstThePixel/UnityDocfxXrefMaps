@@ -39,10 +39,10 @@ function rewrite_href {
             param=$(echo "$param" | sed -E 's/.*\.//g') # Strip the namespace
             href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/")
         fi
-        # Handle generics by replacing backticks and digits with an underscore
+        # Handle nested generics with multiple backticks by removing them and the numbers following
+        href=$(echo "$href" | sed -E 's/[`]{2,}[0-9]+//g')
+        # Handle simple generics single backticks by replacing them with an underscore followed by numbers
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
-        # Handle nested generics by removing everything after any number of backticks and a digit
-        href=$(echo "$href" | sed -E 's/`[0-9]+.*//g')
         # Remove everything between { } and parameter list from method signatures
         href=$(echo "$href" | sed -E 's/\{[^}]*\}|\(.*\)//g')
         # Regex to match the base part and the last part by the last dot
