@@ -40,8 +40,10 @@ function rewrite_href {
         # Convert op_Implicit and capture the parameter type without the namespace or contents inside { } and add T to the end.
         if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
             local param="${BASH_REMATCH[1]}"
-            param=$(echo "$param" | sed -E 's/.*\.//g') # Strip the namespace
-            href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/")
+            # Strip the namespace
+            param=$(echo "$param" | sed -E 's/.*\.//g')
+            # Rewrite implicit operator and append T to the end, and remove everything after T
+            href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
         href=$(echo "$href" | sed -E 's/[`]{2,}[0-9]+//g')
@@ -91,7 +93,7 @@ function generate_xref_map {
                 echo "No items found in $file"
                 continue
             fi
-            echo "::group::Processing $file"
+            echo "Processing $file"
             for item in "${items[@]}"; do
                 uid=$(echo "$item" | yq '.uid')
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
@@ -111,7 +113,6 @@ function generate_xref_map {
                     --arg nameWithType "$name_with_type" \
                     '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')")
             done
-            echo "::endgroup::"
         fi
     done
     # Compile all references data into the final output YAML
