@@ -132,22 +132,22 @@ function generate_xref_map {
                 # echo "Processing $comment_id"
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
                 echo "$comment_id -> $href"
-                # Build JSON entry and append to references array
-                reference=$(yq eval -n \
+                # Manually construct JSON entry
+                reference=$(jq -n \
                     --arg uid "$uid" \
                     --arg name "$name" \
                     --arg href "$href" \
                     --arg commentId "$comment_id" \
                     --arg fullName "$full_name" \
                     --arg nameWithType "$name_with_type" \
-                    '{ "uid": strenv(uid), "name": strenv(name), "href": strenv(href), "commentId": strenv(commentId), "fullName": strenv(fullName), "nameWithType": strenv(nameWithType) }')
+                    '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')
                 references+=("$reference")
             done
         fi
     done
-    # Sort the references array and convert it to a JSON array using yq
-    sorted_references=$(yq eval -n -o=j -I=0 'sort_by(.uid) | .[]' <(printf "%s\n" "${references[@]}"))
-    # Compile all references data into the final output YAML
+    # Sort the references array using jq and convert it to a JSON array
+    sorted_references=$(printf '%s\n' "${references[@]}" | jq -s 'sort_by(.uid)')
+    # Compile all references data into the final output YAML using yq
     xref_map_content=$(yq eval -n -P \
         --argjson references "$sorted_references" \
         '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }')
