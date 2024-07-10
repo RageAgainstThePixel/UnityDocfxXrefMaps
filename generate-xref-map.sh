@@ -35,13 +35,19 @@ function rewrite_href {
         href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
         # Handle #ctor
         href="${href//\.#ctor/-ctor}"
-        # Convert op_Implicit and capture the parameter type without the namespace or contents inside { }, and add T to the end
+        # Convert op_Implicit and capture the parameter type without the namespace or contents inside {}, and add T to the end for generic cases.
         if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
             local param="${BASH_REMATCH[1]}"
             # Strip the namespace in parameter name
             param=$(echo "$param" | sed -E 's/.*\.//g')
-            # Rewrite implicit operator and append T to the end, and remove everything after T
-            href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
+            # Check if the parameter is generic
+            if [[ "$param" == \`* ]]; then
+                # Append T only if the parameter is generic
+                href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
+            else
+                # Do not append T if the parameter is not generic
+                href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}/")
+            fi
         fi
         # Convert any other operators
         if [[ "$href" =~ \.op_ ]]; then
@@ -57,12 +63,33 @@ function rewrite_href {
             elif [[ "$href" =~ \.op_GreaterThan ]]; then
                 # Rewrite greater than operator and remove everything after gt
                 href=$(echo "$href" | sed -E 's/\.op_GreaterThan/-operator_gt/; s/(gt).*/\1/')
+            elif [[ "$href" =~ \.op_Subtraction ]]; then
+                # Rewrite subtraction operator and remove everything after subtract
+                href=$(echo "$href" | sed -E 's/\.op_Subtraction/-operator_subtract/; s/(subtract).*/\1/')
+            elif [[ "$href" =~ \.op_Addition ]]; then
+                # Rewrite addition operator and remove everything after add
+                href=$(echo "$href" | sed -E 's/\.op_Addition/-operator_add/; s/(add).*/\1/')
+            elif [[ "$href" =~ \.op_Division ]]; then
+                # Rewrite division operator and remove everything after divide
+                href=$(echo "$href" | sed -E 's/\.op_Division/-operator_divide/; s/(divide).*/\1/')
+            elif [[ "$href" =~ \.op_Explicit ]]; then
+                # Rewrite explicit operator, capture everything after ~ as signature
+                local signature
+                signature=$(echo "$href" | sed -E 's/.*~(.*)/\1/')
+                if [[ "$signature" =~ ^System ]]; then
+                    # if signature starts with System, remove namespace and convert to lowercase
+                    signature=$(echo "$signature" | sed -E 's/.*\.//g' | tr '[:upper:]' '[:lower:]')
+                else
+                    # remove namespace and leave as is
+                    signature=$(echo "$signature" | sed -E 's/.*\.//g')
+                fi
+                href=$(echo "$href" | sed -E 's/\.op_Explicit/-operator_'"$signature"'/')
             else
                 # capture the operator name and convert it to lowercase then
                 # replace op_ with -operator_ and drop everything after the operator name
                 local operator
                 operator=$(echo "$href" | sed -E 's/.*\.op_(.*)/\1/' | tr '[:upper:]' '[:lower:]')
-                href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}/")
+                href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}//g")
             fi
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
@@ -111,16 +138,12 @@ function append_reference_to_yaml {
     uid="$2"
     name="$3"
     href="$4"
-    comment_id="$5"
-    full_name="$6"
-    name_with_type="$7"
+    full_name="$5"
     cat <<EOF >>"$file"
 - uid: $uid
   name: $name
   href: $href
-  commentId: $comment_id
   fullName: $full_name
-  nameWithType: $name_with_type
 EOF
 }
 
@@ -131,20 +154,19 @@ function generate_xref_map {
     local output_file="$output_folder/$version/xrefmap.yml"
     mkdir -p "$(dirname "$output_file")"
     echo '### YamlMime:XRefMap' >"$output_file"
-    echo '' >>"$output_file"
+    echo 'sorted: true' >>"$output_file"
     echo 'references:' >>"$output_file"
     for file in "$generated_metadata_path"/*.yml; do
         if head -n 1 "$file" | grep -q "### YamlMime:ManagedReference"; then
-            yq eval '.items | sort_by(.uid)' "$file" | yq eval -o=j -I=0 '.[]' |
+            yq eval '.items' "$file" | yq eval -o=j -I=0 '.[]' |
                 while IFS= read -r item; do
                     uid=$(echo "$item" | yq '.uid')
                     full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                     name=$(normalize_text "$(echo "$item" | yq '.name')")
                     comment_id=$(echo "$item" | yq '.commentId')
-                    name_with_type=$(echo "$item" | yq '.nameWithType')
                     href=$(rewrite_href "$uid" "$comment_id" "$version")
                     echo "$comment_id -> $href"
-                    append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$comment_id" "$full_name" "$name_with_type"
+                    append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$full_name"
                 done
         fi
     done
