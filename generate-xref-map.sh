@@ -129,24 +129,37 @@ function generate_xref_map {
     local generated_metadata_path="$2"
     local output_folder="$3"
     local output_file="$output_folder/$version/xrefmap.yml"
+    local temp_file
     mkdir -p "$(dirname "$output_file")"
     echo '### YamlMime:XRefMap' >"$output_file"
     echo '' >>"$output_file"
     echo 'references:' >>"$output_file"
+
+    # Temporary file to store items
+    temp_file=$(mktemp)
+
+    # Extract and sort items by uid
     for file in "$generated_metadata_path"/*.yml; do
         if head -n 1 "$file" | grep -q "### YamlMime:ManagedReference"; then
-            while IFS= read -r item; do
-                uid=$(echo "$item" | yq '.uid')
-                full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
-                name=$(normalize_text "$(echo "$item" | yq '.name')")
-                comment_id=$(echo "$item" | yq '.commentId')
-                name_with_type=$(echo "$item" | yq '.nameWithType')
-                href=$(rewrite_href "$uid" "$comment_id" "$version")
-                echo "$comment_id -> $href"
-                append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$comment_id" "$full_name" "$name_with_type"
-            done < <(yq eval -o=j -I=0 '.items[]' "$file")
+            yq eval -o=j -I=0 '.items[]' "$file" | jq -s 'sort_by(.uid)' >"$temp_file"
         fi
     done
+
+    # Process each sorted item
+    while IFS= read -r item; do
+        uid=$(echo "$item" | jq -r '.uid')
+        full_name=$(normalize_text "$(echo "$item" | jq -r '.fullName')")
+        name=$(normalize_text "$(echo "$item" | jq -r '.name')")
+        comment_id=$(echo "$item" | jq -r '.commentId')
+        name_with_type=$(echo "$item" | jq -r '.nameWithType')
+        href=$(rewrite_href "$uid" "$comment_id" "$version")
+        echo "$comment_id -> $href"
+        append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$comment_id" "$full_name" "$name_with_type"
+    done <"$temp_file"
+
+    # Clean up temporary file
+    rm "$temp_file"
+
     echo "Unity $version XRef Map generated successfully!"
 }
 
