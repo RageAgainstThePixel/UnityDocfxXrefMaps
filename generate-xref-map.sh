@@ -14,7 +14,7 @@ function validate_url {
     local url="$1"
     status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
     if [[ "$status_code" -ne 200 ]]; then
-        echo -e "\e[32mValidating $url - Status: $status_code OK\e[0m" >&2
+        echo -e "\e[33mValidating $url - Status: $status_code FAIL\e[0m" >&2
     fi
     [[ "$status_code" -eq 200 ]]
 }

@@ -81,6 +81,7 @@ jobs:
           echo "::group::Generate xref map for Unity version ${{ matrix.unity_version }}"
           ${{ github.workspace }}/generate-xref-map.sh ${{ matrix.unity_version }} ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ${{ github.workspace }}/_site
           echo "::endgroup::"
+        name: Generate Xref Metadata
       - uses: actions/upload-artifact@v4
         with:
           retention-days: 1
