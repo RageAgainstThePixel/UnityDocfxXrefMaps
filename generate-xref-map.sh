@@ -32,49 +32,43 @@ function rewrite_href {
         return
     else
         # Remove UnityEngine and UnityEditor namespaces
-        href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
+        href="${href#UnityEngine.}"
+        href="${href#UnityEditor.}"
         # Handle #ctor
         href="${href//\.#ctor/-ctor}"
         # Convert op_Implicit and capture the parameter type without the namespace or contents inside { }, and add T to the end
         if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
             local param="${BASH_REMATCH[1]}"
             # Strip the namespace in parameter name
-            param=$(echo "$param" | sed -E 's/.*\.//g')
+            param="${param##*.}"
             # Rewrite implicit operator and append T to the end, and remove everything after T
-            href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
+            href="${href/\.op_Implicit\(*\)/-operator_${param}T}"
+            href="${href/T*/T}"
         fi
         # Convert any other operators
         if [[ "$href" =~ \.op_ ]]; then
-            if [[ "$href" =~ \.op_Equality ]]; then
-                # Rewrite equality operator and remove everything after eq
-                href=$(echo "$href" | sed -E 's/\.op_Equality/-operator_eq/; s/(eq).*/\1/')
-            elif [[ "$href" =~ \.op_Inequality ]]; then
-                # Rewrite inequality operator and remove everything after ne
-                href=$(echo "$href" | sed -E 's/\.op_Inequality/-operator_ne/; s/(ne).*/\1/')
-            elif [[ "$href" =~ \.op_LessThan ]]; then
-                # Rewrite less than operator and remove everything after lt
-                href=$(echo "$href" | sed -E 's/\.op_LessThan/-operator_lt/; s/(lt).*/\1/')
-            elif [[ "$href" =~ \.op_GreaterThan ]]; then
-                # Rewrite greater than operator and remove everything after gt
-                href=$(echo "$href" | sed -E 's/\.op_GreaterThan/-operator_gt/; s/(gt).*/\1/')
-            else
-                # capture the operator name and convert it to lowercase then
-                # replace op_ with -operator_ and drop everything after the operator name
-                local operator
-                operator=$(echo "$href" | sed -E 's/.*\.op_(.*)/\1/' | tr '[:upper:]' '[:lower:]')
-                href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}/")
-            fi
+            case "$href" in
+            *.op_Equality) href="${href//\.op_Equality/-operator_eq}" ;;
+            *.op_Inequality) href="${href//\.op_Inequality/-operator_ne}" ;;
+            *.op_LessThan) href="${href//\.op_LessThan/-operator_lt}" ;;
+            *.op_GreaterThan) href="${href//\.op_GreaterThan/-operator_gt}" ;;
+            *)
+                local operator="${href#*\.op_}"
+                operator="${operator,,}"
+                href="${href/\.op_*/-operator_${operator}}"
+                ;;
+            esac
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
-        href=$(echo "$href" | sed -E 's/[`]{2,}[0-9]+//g')
+        href="${href//\`\`[0-9]*/}"
         # Handle simple generics single backticks by replacing them with an underscore followed by numbers
-        href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
+        href="${href//\`([0-9]+)/_\1}"
         # Remove everything between { } and parameter list from method signatures
-        href=$(echo "$href" | sed -E 's/\{[^}]*\}|\(.*\)//g')
+        href="${href//\{*/\}/}"
+        href="${href//(*//}"
         # Regex to match the base part and the last part by the last dot
-        local base_part_regex="^(.*)\.(.*)$"
-        if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: || "$comment_id" =~ ^E: ]]; then
-            if [[ "$href" =~ $base_part_regex ]]; then
+        if [[ "$comment_id" =~ ^[FPMTE]: ]]; then
+            if [[ "$href" =~ ^(.*)\.(.*)$ ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
                 parent_href="$base_part"
@@ -84,13 +78,13 @@ function rewrite_href {
     fi
     if [[ "$href" =~ -ctor ]]; then
         # remove -ctor and everything after -ctor
-        alt_href=$(echo "$href" | sed -E 's/-ctor.*//g')
+        alt_href="${href%-ctor*}"
     elif [[ "$href" =~ -operator ]]; then
         # remove -operator and everything after -operator
-        alt_href=$(echo "$href" | sed -E 's/-operator.*//g')
+        alt_href="${href%-operator*}"
     else
         # else replace . with -
-        alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
+        alt_href="${href/\.([^.]*)$/-\1}"
     fi
     local url="${base_url}${href}.html"
     local alt_url="${base_url}${alt_href}.html"
@@ -106,24 +100,36 @@ function rewrite_href {
     fi
 }
 
+function append_reference_to_yaml {
+    local file="$1"
+    uid="$2"
+    name="$3"
+    href="$4"
+    comment_id="$5"
+    full_name="$6"
+    name_with_type="$7"
+    cat <<EOF >>"$file"
+- uid: $uid
+  name: $name
+  href: $href
+  commentId: $comment_id
+  fullName: $full_name
+  nameWithType: $name_with_type
+EOF
+}
+
 function generate_xref_map {
     local version="$1"
     local generated_metadata_path="$2"
     local output_folder="$3"
     local output_file="$output_folder/$version/xrefmap.yml"
-    local temp_json_file="$output_folder/$version/xrefmap.json"
     mkdir -p "$(dirname "$output_file")"
-    echo '[]' >"$temp_json_file"
+    echo '### YamlMime:XRefMap' >"$output_file"
+    echo '' >>"$output_file"
+    echo 'references:' >>"$output_file"
     for file in "$generated_metadata_path"/*.yml; do
-        first_line=$(head -n 1 "$file")
-        if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
-            readarray items < <(yq eval -o=j -I=0 '.items[]' "$file")
-            if [[ ${#items[@]} -eq 0 ]]; then
-                echo "No items found in $file"
-                continue
-            fi
-            for item in "${items[@]}"; do
-                local reference
+        if head -n 1 "$file" | grep -q "### YamlMime:ManagedReference"; then
+            while IFS= read -r item; do
                 uid=$(echo "$item" | yq '.uid')
                 full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
@@ -131,22 +137,10 @@ function generate_xref_map {
                 name_with_type=$(echo "$item" | yq '.nameWithType')
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
                 echo "$comment_id -> $href"
-                reference=$(jq -n \
-                    --arg uid "$uid" \
-                    --arg name "$name" \
-                    --arg href "$href" \
-                    --arg commentId "$comment_id" \
-                    --arg fullName "$full_name" \
-                    --arg nameWithType "$name_with_type" \
-                    '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')
-                tmp_file=$(mktemp)
-                jq ". + [$reference]" "$temp_json_file" >"$tmp_file" && mv "$tmp_file" "$temp_json_file"
-            done
+                append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$comment_id" "$full_name" "$name_with_type"
+            done < <(yq eval -o=j -I=0 '.items[]' "$file")
         fi
     done
-    yq eval -n -P \
-        --argfile references "$temp_json_file" \
-        '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }' >"$output_file"
     echo "Unity $version XRef Map generated successfully!"
 }
 
