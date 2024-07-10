@@ -70,6 +70,8 @@ function rewrite_href {
         # Handle simple generics single backticks by replacing them with an underscore followed by numbers
         href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
         # Remove everything between { } and parameter list from method signatures
+        href=$(echo "$href" | sed -E 's/\{[^}]*\}|\(.*\)//g')
+        # Regex to match the base part and the last part by the last dot
         local base_part_regex="^(.*)\.(.*)$"
         if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: || "$comment_id" =~ ^E: ]]; then
             if [[ "$href" =~ $base_part_regex ]]; then
