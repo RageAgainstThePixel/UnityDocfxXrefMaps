@@ -111,10 +111,10 @@ function generate_xref_map {
     local generated_metadata_path="$2"
     local output_folder="$3"
     local output_file="$output_folder/$version/xrefmap.yml"
-    local references=()
-    # Iterate over every YAML file in the generated metadata path
+    local temp_json_file="$output_folder/$version/xrefmap.json"
+    mkdir -p "$(dirname "$output_file")"
+    echo '[]' >"$temp_json_file"
     for file in "$generated_metadata_path"/*.yml; do
-        # Validate if the file contains "### YamlMime:ManagedReference" on the first line
         first_line=$(head -n 1 "$file")
         if [[ "$first_line" == "### YamlMime:ManagedReference" ]]; then
             readarray items < <(yq eval -o=j -I=0 '.items[]' "$file")
@@ -129,10 +129,8 @@ function generate_xref_map {
                 name=$(normalize_text "$(echo "$item" | yq '.name')")
                 comment_id=$(echo "$item" | yq '.commentId')
                 name_with_type=$(echo "$item" | yq '.nameWithType')
-                # echo "Processing $comment_id"
                 href=$(rewrite_href "$uid" "$comment_id" "$version")
                 echo "$comment_id -> $href"
-                # Manually construct JSON entry
                 reference=$(jq -n \
                     --arg uid "$uid" \
                     --arg name "$name" \
@@ -141,18 +139,14 @@ function generate_xref_map {
                     --arg fullName "$full_name" \
                     --arg nameWithType "$name_with_type" \
                     '{ uid: $uid, name: $name, href: $href, commentId: $commentId, fullName: $fullName, nameWithType: $nameWithType }')
-                references+=("$reference")
+                tmp_file=$(mktemp)
+                jq ". + [$reference]" "$temp_json_file" >"$tmp_file" && mv "$tmp_file" "$temp_json_file"
             done
         fi
     done
-    # Sort the references array using jq and convert it to a JSON array
-    sorted_references=$(printf '%s\n' "${references[@]}" | jq -s 'sort_by(.uid)')
-    # Compile all references data into the final output YAML using yq
-    xref_map_content=$(yq eval -n -P \
-        --argjson references "$sorted_references" \
-        '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }')
-    mkdir -p "$(dirname "$output_file")"
-    echo "$xref_map_content" >"$output_file"
+    yq eval -n -P \
+        --argfile references "$temp_json_file" \
+        '{ "### YamlMime:XRefMap": null, sorted: true, references: $references }' >"$output_file"
     echo "Unity $version XRef Map generated successfully!"
 }
 
