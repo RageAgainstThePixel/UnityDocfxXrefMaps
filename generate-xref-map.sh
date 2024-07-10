@@ -133,25 +133,20 @@ function generate_xref_map {
     echo '### YamlMime:XRefMap' >"$output_file"
     echo '' >>"$output_file"
     echo 'references:' >>"$output_file"
-    items=()
     for file in "$generated_metadata_path"/*.yml; do
         if head -n 1 "$file" | grep -q "### YamlMime:ManagedReference"; then
-            while IFS= read -r item; do
-                items+=("$item")
-            done < <(yq eval -o=j -I=0 '.items[]' "$file")
+            yq eval '.items | sort_by(.uid)' "$file" | yq eval -o=j -I=0 '.[]' |
+                while IFS= read -r item; do
+                    uid=$(echo "$item" | yq '.uid')
+                    full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
+                    name=$(normalize_text "$(echo "$item" | yq '.name')")
+                    comment_id=$(echo "$item" | yq '.commentId')
+                    name_with_type=$(echo "$item" | yq '.nameWithType')
+                    href=$(rewrite_href "$uid" "$comment_id" "$version")
+                    echo "$comment_id -> $href"
+                    append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$comment_id" "$full_name" "$name_with_type"
+                done
         fi
-    done
-    mapfile -t sorted_items < <(sort -t : -k 2,2 <<<"${items[*]}")
-    unset IFS
-    for item in "${sorted_items[@]}"; do
-        uid=$(echo "$item" | yq '.uid')
-        full_name=$(normalize_text "$(echo "$item" | yq '.fullName')")
-        name=$(normalize_text "$(echo "$item" | yq '.name')")
-        comment_id=$(echo "$item" | yq '.commentId')
-        name_with_type=$(echo "$item" | yq '.nameWithType')
-        href=$(rewrite_href "$uid" "$comment_id" "$version")
-        echo "$comment_id -> $href"
-        append_reference_to_yaml "$output_file" "$uid" "$name" "$href" "$comment_id" "$full_name" "$name_with_type"
     done
     echo "Unity $version XRef Map generated successfully!"
 }
