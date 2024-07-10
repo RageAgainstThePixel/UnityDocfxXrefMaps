@@ -32,43 +32,47 @@ function rewrite_href {
         return
     else
         # Remove UnityEngine and UnityEditor namespaces
-        href="${href#UnityEngine.}"
-        href="${href#UnityEditor.}"
+        href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
         # Handle #ctor
         href="${href//\.#ctor/-ctor}"
         # Convert op_Implicit and capture the parameter type without the namespace or contents inside { }, and add T to the end
         if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
             local param="${BASH_REMATCH[1]}"
             # Strip the namespace in parameter name
-            param="${param##*.}"
+            param=$(echo "$param" | sed -E 's/.*\.//g')
             # Rewrite implicit operator and append T to the end, and remove everything after T
-            href="${href/\.op_Implicit\(*\)/-operator_${param}T}"
-            href="${href/T*/T}"
+            href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
         fi
         # Convert any other operators
         if [[ "$href" =~ \.op_ ]]; then
-            case "$href" in
-            *.op_Equality) href="${href//\.op_Equality/-operator_eq}" ;;
-            *.op_Inequality) href="${href//\.op_Inequality/-operator_ne}" ;;
-            *.op_LessThan) href="${href//\.op_LessThan/-operator_lt}" ;;
-            *.op_GreaterThan) href="${href//\.op_GreaterThan/-operator_gt}" ;;
-            *)
-                local operator="${href#*\.op_}"
-                operator="${operator,,}"
-                href="${href/\.op_*/-operator_${operator}}"
-                ;;
-            esac
+            if [[ "$href" =~ \.op_Equality ]]; then
+                # Rewrite equality operator and remove everything after eq
+                href=$(echo "$href" | sed -E 's/\.op_Equality/-operator_eq/; s/(eq).*/\1/')
+            elif [[ "$href" =~ \.op_Inequality ]]; then
+                # Rewrite inequality operator and remove everything after ne
+                href=$(echo "$href" | sed -E 's/\.op_Inequality/-operator_ne/; s/(ne).*/\1/')
+            elif [[ "$href" =~ \.op_LessThan ]]; then
+                # Rewrite less than operator and remove everything after lt
+                href=$(echo "$href" | sed -E 's/\.op_LessThan/-operator_lt/; s/(lt).*/\1/')
+            elif [[ "$href" =~ \.op_GreaterThan ]]; then
+                # Rewrite greater than operator and remove everything after gt
+                href=$(echo "$href" | sed -E 's/\.op_GreaterThan/-operator_gt/; s/(gt).*/\1/')
+            else
+                # capture the operator name and convert it to lowercase then
+                # replace op_ with -operator_ and drop everything after the operator name
+                local operator
+                operator=$(echo "$href" | sed -E 's/.*\.op_(.*)/\1/' | tr '[:upper:]' '[:lower:]')
+                href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}/")
+            fi
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
-        href="${href//\`\`[0-9]*/}"
+        href=$(echo "$href" | sed -E 's/[`]{2,}[0-9]+//g')
         # Handle simple generics single backticks by replacing them with an underscore followed by numbers
-        href="${href//\`([0-9]+)/_\1}"
+        href=$(echo "$href" | sed -E 's/`([0-9]+)/_\1/g')
         # Remove everything between { } and parameter list from method signatures
-        href="${href//\{*/\}/}"
-        href="${href//(*//}"
-        # Regex to match the base part and the last part by the last dot
-        if [[ "$comment_id" =~ ^[FPMTE]: ]]; then
-            if [[ "$href" =~ ^(.*)\.(.*)$ ]]; then
+        local base_part_regex="^(.*)\.(.*)$"
+        if [[ "$comment_id" =~ ^F: || "$comment_id" =~ ^P: || "$comment_id" =~ ^M: || "$comment_id" =~ ^T: || "$comment_id" =~ ^E: ]]; then
+            if [[ "$href" =~ $base_part_regex ]]; then
                 local base_part="${BASH_REMATCH[1]}"
                 local last_part="${BASH_REMATCH[2]}"
                 parent_href="$base_part"
@@ -78,13 +82,13 @@ function rewrite_href {
     fi
     if [[ "$href" =~ -ctor ]]; then
         # remove -ctor and everything after -ctor
-        alt_href="${href%-ctor*}"
+        alt_href=$(echo "$href" | sed -E 's/-ctor.*//g')
     elif [[ "$href" =~ -operator ]]; then
         # remove -operator and everything after -operator
-        alt_href="${href%-operator*}"
+        alt_href=$(echo "$href" | sed -E 's/-operator.*//g')
     else
         # else replace . with -
-        alt_href="${href/\.([^.]*)$/-\1}"
+        alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
     fi
     local url="${base_url}${href}.html"
     local alt_url="${base_url}${alt_href}.html"
