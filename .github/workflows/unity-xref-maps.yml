@@ -114,6 +114,7 @@ jobs:
           path: ${{ github.workspace }}/_site/
   # get the xref maps from the artifacts and publish them to gh-pages
   publish_xref_maps:
+    if: always()
     needs: generate_xref_map
     runs-on: ubuntu-latest
     steps:
