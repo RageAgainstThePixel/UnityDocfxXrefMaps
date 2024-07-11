@@ -102,7 +102,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: xref-${{ matrix.unity_version }}
+          name: ${{ matrix.unity_version }}-metadata
       - run: |
           chmod +x ${{ github.workspace }}/generate-xref-map.sh
           echo "::group::Generate xref map for Unity version ${{ matrix.unity_version }}"
