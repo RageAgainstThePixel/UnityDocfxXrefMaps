@@ -48,14 +48,15 @@ jobs:
         with:
           dotnet-version: 8.x
       - run: |
+          set -xe
           echo "::group::DocFX metadata ${{ matrix.unity_version }}"
           dotnet tool install -g docfx
 
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
           if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
-            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error --property Configuration=Debug
+            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel diagnostic --property Configuration=Debug
           else
-            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error
+            docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel diagnostic
           fi
 
           # check if metadata generation was successful
