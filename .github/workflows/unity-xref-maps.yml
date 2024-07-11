@@ -33,7 +33,7 @@ jobs:
   # genearte docfx metadata for each unity version
   generate_metadata:
     needs: get_unity_versions
-    runs-on: windiws-latest
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
