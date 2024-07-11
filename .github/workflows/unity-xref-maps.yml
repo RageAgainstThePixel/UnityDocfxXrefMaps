@@ -35,7 +35,6 @@ jobs:
     needs: get_unity_versions
     runs-on: windows-latest
     strategy:
-      fail-fast: false
       matrix:
         unity_version: ${{ fromJson(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
     steps:
