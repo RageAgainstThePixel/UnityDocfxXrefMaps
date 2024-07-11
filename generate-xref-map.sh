@@ -35,23 +35,18 @@ function rewrite_href {
         href=$(echo "$href" | sed -E 's/^UnityEngine\.|^UnityEditor\.//g')
         # Handle #ctor
         href="${href//\.#ctor/-ctor}"
-        # Convert op_Implicit and capture the parameter type without the namespace or contents inside {}, and add T to the end for generic cases.
-        if [[ "$href" =~ \.op_Implicit\((.*)\) ]]; then
-            local param="${BASH_REMATCH[1]}"
-            # Strip the namespace in parameter name
-            param=$(echo "$param" | sed -E 's/.*\.//g')
-            # Check if the parameter is generic
-            if [[ "$param" == \`* ]]; then
-                # Append T only if the parameter is generic
-                href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}T/; s/(T).*/\1/")
-            else
-                # Do not append T if the parameter is not generic
-                href=$(echo "$href" | sed -E "s/\.op_Implicit\(.*\)/-operator_${param}/")
-            fi
-        fi
-        # Convert any other operators
+        # Convert operators
         if [[ "$href" =~ \.op_ ]]; then
-            if [[ "$href" =~ \.op_Equality ]]; then
+            # Convert op_Implicit and op_Explicit operators
+            if [[ "$href" =~ \.op_(Implicit|Explicit)\((.*)\)~(.*) ]]; then
+                local operator="${BASH_REMATCH[1]}"
+                local param="${BASH_REMATCH[2]}"
+                local returnType="${BASH_REMATCH[3]}"
+                # Strip the namespace from parameter and return type
+                param=$(echo "$param" | sed -E 's/.*\.//g')
+                returnType=$(echo "$returnType" | sed -E 's/.*\.//g')
+                href=$(echo "$href" | sed -E "s/\.op_${operator}\(.*\)~.*$/${param}-operator_${returnType}/")
+            elif [[ "$href" =~ \.op_Equality ]]; then
                 # Rewrite equality operator and remove everything after eq
                 href=$(echo "$href" | sed -E 's/\.op_Equality/-operator_eq/; s/(eq).*/\1/')
             elif [[ "$href" =~ \.op_Inequality ]]; then
@@ -72,24 +67,15 @@ function rewrite_href {
             elif [[ "$href" =~ \.op_Division ]]; then
                 # Rewrite division operator and remove everything after divide
                 href=$(echo "$href" | sed -E 's/\.op_Division/-operator_divide/; s/(divide).*/\1/')
-            elif [[ "$href" =~ \.op_Explicit ]]; then
-                # Rewrite explicit operator, capture everything after ~ as signature
-                local signature
-                signature=$(echo "$href" | sed -E 's/.*~(.*)/\1/')
-                if [[ "$signature" =~ ^System ]]; then
-                    # if signature starts with System, remove namespace and convert to lowercase
-                    signature=$(echo "$signature" | sed -E 's/.*\.//g' | tr '[:upper:]' '[:lower:]')
-                else
-                    # remove namespace and leave as is
-                    signature=$(echo "$signature" | sed -E 's/.*\.//g')
-                fi
-                href=$(echo "$href" | sed -E 's/\.op_Explicit/-operator_'"$signature"'/')
+            elif [[ "$href" =~ \.op_Multiply ]]; then
+                # Rewrite multiplication operator and remove everything after multiply
+                href=$(echo "$href" | sed -E 's/\.op_Multiply/-operator_multiply/; s/(multiply).*/\1/')
             else
-                # capture the operator name, drop the signature and convert it to lowercase then
+                # capture the operator name and convert it to lowercase then
                 # replace op_ with -operator_ and drop everything after the operator name
                 local operator
-                operator=$(echo "$href" | sed -E 's/.*\.op_(.*)\(.*/\1/' | tr '[:upper:]' '[:lower:]')
-                href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}//g")
+                operator=$(echo "$href" | sed -E 's/.*\.op_([^()]*)\(.*\)/\1/' | tr '[:upper:]' '[:lower:]')
+                href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}/")
             fi
         fi
         # Handle nested generics with multiple backticks by removing them and the numbers following
