@@ -57,7 +57,6 @@ jobs:
             dotnet tool install -g docfx
           fi
 
-
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
           if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
             docfx metadata ${{ github.workspace }}/.docfx/docfx.json --output ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} --logLevel error --property Configuration=Debug
