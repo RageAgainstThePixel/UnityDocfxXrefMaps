@@ -102,6 +102,7 @@ jobs:
           # Ensure generation script succeeded
           if [ $? -ne 0 ]; then
             echo "Failed to generate xref map for Unity version ${{ matrix.unity_version }}"
+            rm -rf ${{ github.workspace }}/_site
             exit 1
           fi
         shell: bash
