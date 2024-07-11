@@ -14,7 +14,7 @@ concurrency:
 jobs:
   # enumerate all unity versions based on branch names of UnityCsReference repo
   get_unity_versions:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     outputs:
       UNITY_VERSIONS: ${{ steps.get_unity_versions.outputs.UNITY_VERSIONS }}
     steps:
@@ -30,11 +30,10 @@ jobs:
           VERSIONS=$(echo "$BRANCHES" | sed 's|origin/||g' | tr -s ' ' '\n' | jq -R -s 'split("\n") | map(select(. != ""))' | jq -c .)
           echo "Versions: $VERSIONS"
           echo "UNITY_VERSIONS=$VERSIONS" >> "$GITHUB_OUTPUT"
-        shell: bash
   # genearte docfx metadata for each unity version
   generate_metadata:
     needs: get_unity_versions
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         unity_version: ${{ fromJson(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
