@@ -142,7 +142,7 @@ function generate_xref_map {
     echo '### YamlMime:XRefMap' >"$output_file"
     echo 'sorted: true' >>"$output_file"
     echo 'references:' >>"$output_file"
-    find "$generated_metadata_path" -type f -name '*.yml' | while IFS= read -r file; do
+    for file in "$generated_metadata_path"/*.yml; do
         if head -n 1 "$file" | grep -q "### YamlMime:ManagedReference"; then
             yq eval '.items' "$file" | yq eval -o=j -I=0 '.[]' |
                 while IFS= read -r item; do
