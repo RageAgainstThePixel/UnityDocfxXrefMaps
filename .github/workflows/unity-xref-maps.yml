@@ -35,6 +35,7 @@ jobs:
     needs: get_unity_versions
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         unity_version: ${{ fromJson(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
     steps:
@@ -44,12 +45,8 @@ jobs:
           repository: Unity-Technologies/UnityCsReference
           path: UnityCsReference
           ref: ${{ matrix.unity_version }}
-      # - uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: 8.x
       - run: |
-          echo "::group::DocFX metadata ${{ matrix.unity_version }}"
-
+          echo "DocFX metadata ${{ matrix.unity_version }}"
           dotnet tool install -g docfx
 
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
@@ -77,12 +74,6 @@ jobs:
             Write-Error "No metadata found for Unity version ${{ matrix.unity_version }}"
             exit 1
           }
-
-          echo "::endgroup::"
-          # Additional logging
-          echo "::group::Directory contents after generation"
-          Get-ChildItem -Recurse ${{ github.workspace }}/.docfx/xref/
-          echo "::endgroup::"
         shell: pwsh
         name: Generate Xref Metadata
       - uses: actions/upload-artifact@v4
@@ -95,6 +86,7 @@ jobs:
     needs: [generate_metadata, get_unity_versions]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         unity_version: ${{ fromJson(needs.get_unity_versions.outputs.UNITY_VERSIONS) }}
     steps:
@@ -105,14 +97,13 @@ jobs:
           path: ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}/
       - run: |
           chmod +x ${{ github.workspace }}/generate-xref-map.sh
-          echo "::group::Generate xref map for Unity version ${{ matrix.unity_version }}"
+          echo "Generate xref map for Unity version ${{ matrix.unity_version }}"
           ${{ github.workspace }}/generate-xref-map.sh ${{ matrix.unity_version }} ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ${{ github.workspace }}/_site
           # Ensure generation script succeeded
           if [ $? -ne 0 ]; then
             echo "Failed to generate xref map for Unity version ${{ matrix.unity_version }}"
             exit 1
           fi
-          echo "::endgroup::"
         shell: bash
         name: Generate Xref Map
       - uses: actions/upload-artifact@v4

@@ -13,10 +13,15 @@ function normalize_text {
 function validate_url {
     local url="$1"
     status_code=$(curl --head --silent --output /dev/null --write-out "%{http_code}" "$url")
-    if [[ "$status_code" -ne 200 ]]; then
-        echo -e "\e[33mValidating $url - Status: $status_code FAIL\e[0m" >&2
+    if [[ "$status_code" -eq 200 ]]; then
+        return 0
+    elif [[ "$status_code" -eq 404 ]]; then
+        echo -e "\e[33mValidating $url -> Status: $status_code\e[0m" >&2
+        return 1
+    else
+        echo -e "\e[31mValidating $url -> Status: $status_code\e[0m" >&2
+        exit 1
     fi
-    [[ "$status_code" -eq 200 ]]
 }
 
 function rewrite_href {
