@@ -50,7 +50,14 @@ jobs:
       - run: |
           set -xe
           echo "::group::DocFX metadata ${{ matrix.unity_version }}"
-          dotnet tool install -g docfx
+
+          # for versions 2017 though 2021, install docfx version 2.61.0 else do latest
+          if [[ ${{ matrix.unity_version }} == 2017.* || ${{ matrix.unity_version }} == 2018.* || ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
+            dotnet tool install -g docfx --version 2.61.0
+          else
+            dotnet tool install -g docfx
+          fi
+
 
           # for versions between 2019.1 and 2021.3 (inclusive) add Debug configuration property
           if [[ ${{ matrix.unity_version }} == 2019.* || ${{ matrix.unity_version }} == 2020.* || ${{ matrix.unity_version }} == 2021.* ]]; then
