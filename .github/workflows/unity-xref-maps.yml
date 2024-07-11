@@ -90,12 +90,6 @@ jobs:
         if: always()
         with:
           retention-days: 1
-          name: xref-${{ matrix.unity_version }}
-          path: ${{ github.workspace }}/_site/
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          retention-days: 1
           name: ${{ matrix.unity_version }}-metadata
           path: ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}/
   process_metadata:
@@ -119,6 +113,12 @@ jobs:
             exit 1
           fi
           echo "::endgroup::"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          retention-days: 1
+          name: xref-${{ matrix.unity_version }}
+          path: ${{ github.workspace }}/_site/
   # get the xref maps from the artifacts and publish them to gh-pages
   publish_xref_maps:
     needs: process_metadata
