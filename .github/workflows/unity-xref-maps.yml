@@ -129,8 +129,9 @@ jobs:
       # download all xref maps from the artifacts
       - uses: actions/download-artifact@v4
         with:
-          name: xref-*
           path: ${{ github.workspace }}/_site/
+          pattern: xref-*
+          merge-multiple: true
       # make sure the _site directory exists and is populated by the xref maps
       - run: |
           if [ ! -d ${{ github.workspace }}/_site ]; then
