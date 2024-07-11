@@ -44,6 +44,10 @@ jobs:
           repository: Unity-Technologies/UnityCsReference
           path: UnityCsReference
           ref: ${{ matrix.unity_version }}
+      - run: |
+          echo "::group::Directory structure for Unity version ${{ matrix.unity_version }}"
+          find UnityCsReference
+          echo "::endgroup::"
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.x
@@ -87,6 +91,19 @@ jobs:
           chmod +x ${{ github.workspace }}/generate-xref-map.sh
           echo "::group::Generate xref map for Unity version ${{ matrix.unity_version }}"
           ${{ github.workspace }}/generate-xref-map.sh ${{ matrix.unity_version }} ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }} ${{ github.workspace }}/_site
+
+          # Ensure generation script succeeded
+          if [ $? -ne 0 ]; then
+            echo "Failed to generate xref map for Unity version ${{ matrix.unity_version }}"
+            exit 1
+          fi
+
+          echo "::endgroup::"
+
+          # Additional logging
+          echo "::group::Directory contents after generation"
+          ls -R ${{ github.workspace }}/.docfx/xref/
+          ls -R ${{ github.workspace }}/_site/
           echo "::endgroup::"
         shell: bash
         name: Generate Xref Metadata
