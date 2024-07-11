@@ -26,7 +26,7 @@ function rewrite_href {
     local base_url="https://docs.unity3d.com/$version/Documentation/ScriptReference/"
     local href="$uid"
     local alt_href=""
-    local parent_href=""
+    local parent_href="index"
     if [[ "$comment_id" =~ ^N: ]]; then
         echo "${base_url}index.html"
         return
@@ -85,10 +85,10 @@ function rewrite_href {
                 fi
                 href=$(echo "$href" | sed -E 's/\.op_Explicit/-operator_'"$signature"'/')
             else
-                # capture the operator name and convert it to lowercase then
+                # capture the operator name, drop the signature and convert it to lowercase then
                 # replace op_ with -operator_ and drop everything after the operator name
                 local operator
-                operator=$(echo "$href" | sed -E 's/.*\.op_(.*)/\1/' | tr '[:upper:]' '[:lower:]')
+                operator=$(echo "$href" | sed -E 's/.*\.op_(.*)\(.*/\1/' | tr '[:upper:]' '[:lower:]')
                 href=$(echo "$href" | sed -E "s/\.op_.*$/-operator_${operator}//g")
             fi
         fi
@@ -116,7 +116,7 @@ function rewrite_href {
         # remove -operator and everything after -operator
         alt_href=$(echo "$href" | sed -E 's/-operator.*//g')
     else
-        # else replace . with -
+        # else replace last instance of . with -
         alt_href=$(echo "$href" | sed -E 's/\.([^.]*)$/-\1/')
     fi
     local url="${base_url}${href}.html"

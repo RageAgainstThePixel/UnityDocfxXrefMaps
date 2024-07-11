@@ -112,9 +112,8 @@ jobs:
             echo "No xref maps found in _site directory"
             exit 1
           fi
-
+          # list all xref maps in _site directory
           ls -R ${{ github.workspace }}/_site
-
           # check if _site directory is not empty
           if [ ! "$(ls -R ${{ github.workspace }}/_site)" ]; then
             # fail the job if _site directory is empty
