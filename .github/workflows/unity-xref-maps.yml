@@ -45,9 +45,9 @@ jobs:
           repository: Unity-Technologies/UnityCsReference
           path: UnityCsReference
           ref: ${{ matrix.unity_version }}
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.x
+      # - uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: 8.x
       - run: |
           echo "::group::DocFX metadata ${{ matrix.unity_version }}"
 
@@ -92,7 +92,7 @@ jobs:
           retention-days: 1
           name: ${{ matrix.unity_version }}-metadata
           path: ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}/
-  process_metadata:
+  generate_xref_map:
     needs: [generate_metadata, get_unity_versions]
     runs-on: ubuntu-latest
     strategy:
@@ -113,6 +113,8 @@ jobs:
             exit 1
           fi
           echo "::endgroup::"
+        shell: bash
+        name: Generate Xref Map
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -121,7 +123,7 @@ jobs:
           path: ${{ github.workspace }}/_site/
   # get the xref maps from the artifacts and publish them to gh-pages
   publish_xref_maps:
-    needs: process_metadata
+    needs: generate_xref_map
     runs-on: ubuntu-latest
     steps:
       # download all xref maps from the artifacts
