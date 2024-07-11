@@ -142,6 +142,10 @@ function generate_xref_map {
     echo '### YamlMime:XRefMap' >"$output_file"
     echo 'sorted: true' >>"$output_file"
     echo 'references:' >>"$output_file"
+    if [ ! -d "$generated_metadata_path" ]; then
+        echo "The generated metadata path does not exist: $generated_metadata_path"
+        exit 1
+    fi
     for file in "$generated_metadata_path"/*.yml; do
         if head -n 1 "$file" | grep -q "### YamlMime:ManagedReference"; then
             yq eval '.items' "$file" | yq eval -o=j -I=0 '.[]' |

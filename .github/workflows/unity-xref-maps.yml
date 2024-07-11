@@ -102,6 +102,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.unity_version }}-metadata
+          path: ${{ github.workspace }}/.docfx/xref/${{ matrix.unity_version }}/
       - run: |
           chmod +x ${{ github.workspace }}/generate-xref-map.sh
           echo "::group::Generate xref map for Unity version ${{ matrix.unity_version }}"
