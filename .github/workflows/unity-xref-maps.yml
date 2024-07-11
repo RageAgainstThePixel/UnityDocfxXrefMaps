@@ -121,7 +121,7 @@ jobs:
           echo "::endgroup::"
   # get the xref maps from the artifacts and publish them to gh-pages
   publish_xref_maps:
-    needs: generate_metadata
+    needs: process_metadata
     runs-on: ubuntu-latest
     steps:
       # download all xref maps from the artifacts
