@@ -135,7 +135,7 @@ jobs:
           # list all xref maps in _site directory
           ls -R ${{ github.workspace }}/_site
           # check if _site directory is not empty
-          if [ ! "$(ls -R ${{ github.workspace }}/_site)" ]; then
+          if [ ! "$(ls -A ${{ github.workspace }}/_site)" ]; then
             # fail the job if _site directory is empty
             echo "No xref maps found in _site directory"
             exit 1
@@ -143,9 +143,9 @@ jobs:
       # generate index.html for the xref maps in _site
       - run: |
           echo "<html><head><title>Unity XRef Maps</title></head><body><h1>Unity XRef Maps</h1><ul>" > ${{ github.workspace }}/_site/index.html
-          for f in ${{ github.workspace }}/xref-*/index.html; do
-            # use relative path to _site and only show the version number in link text
-            echo "<li><a href=\"${f#${{ github.workspace }}/_site/}\">${f#${{ github.workspace }}/xref-}</a></li>" >> ${{ github.workspace }}/_site/index.html
+          for dir in ${{ github.workspace }}/_site/xref-*; do
+            version=$(basename "$dir")
+            echo "<li><a href=\"${version}/index.html\">${version}</a></li>" >> ${{ github.workspace }}/_site/index.html
           done
           echo "</ul></body></html>" >> ${{ github.workspace }}/_site/index.html
       - uses: actions/upload-pages-artifact@v3
