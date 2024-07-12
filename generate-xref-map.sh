@@ -18,6 +18,8 @@ function validate_url {
     elif [[ "$status_code" -eq 404 ]]; then
         echo -e "\e[33mValidating $url -> Status: $status_code\e[0m" >&2
         return 1
+    elif [[ "$status_code" -ge 500 ]]; then
+        validate_url "$url"
     else
         echo -e "\e[31mValidating $url -> Status: $status_code\e[0m" >&2
         exit 1
