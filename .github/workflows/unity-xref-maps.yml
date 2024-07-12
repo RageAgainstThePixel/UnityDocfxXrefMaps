@@ -75,9 +75,9 @@ jobs:
             exit 1
           }
         shell: pwsh
+        continue-on-error: true
         name: Generate Xref Metadata
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           retention-days: 1
           name: ${{ matrix.unity_version }}-metadata
@@ -106,16 +106,15 @@ jobs:
             exit 1
           fi
         shell: bash
+        continue-on-error: true
         name: Generate Xref Map
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           retention-days: 1
           name: xref-${{ matrix.unity_version }}
           path: ${{ github.workspace }}/_site/
   # get the xref maps from the artifacts and publish them to gh-pages
   publish_xref_maps:
-    if: always()
     needs: generate_xref_map
     runs-on: ubuntu-latest
     steps:
@@ -144,8 +143,8 @@ jobs:
       - run: |
           echo "<html><head><title>Unity XRef Maps</title></head><body><h1>Unity XRef Maps</h1><ul>" > ${{ github.workspace }}/_site/index.html
           for dir in ${{ github.workspace }}/_site/xref-*; do
-            version=$(basename "$dir")
-            echo "<li><a href=\"${version}/index.html\">${version}</a></li>" >> ${{ github.workspace }}/_site/index.html
+            version=$(basename "$dir" | sed 's/xref-//')
+            echo "<li><a href=\"${version}/xrefmap.yml\">${version}</a></li>" >> ${{ github.workspace }}/_site/index.html
           done
           echo "</ul></body></html>" >> ${{ github.workspace }}/_site/index.html
       - uses: actions/upload-pages-artifact@v3
