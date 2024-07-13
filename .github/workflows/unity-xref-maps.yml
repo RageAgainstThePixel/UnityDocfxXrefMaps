@@ -144,7 +144,7 @@ jobs:
           echo "<html><head><title>Unity XRef Maps</title></head><body><h1>Unity XRef Maps</h1><ul>" > ${{ github.workspace }}/_site/index.html
           for dir in ${{ github.workspace }}/_site/*; do
             if [ -d "$dir" ]; then
-              echo "<li><a href=\"${dir##*/}/index.html\">${dir##*/}</a></li>" >> ${{ github.workspace }}/_site/index.html
+              echo "<li><a href=\"${dir##*/}/xrefmap.yml\">${dir##*/}</a></li>" >> ${{ github.workspace }}/_site/index.html
             fi
           done
           echo "</ul></body></html>" >> ${{ github.workspace }}/_site/index.html
