@@ -49,10 +49,18 @@ function rewrite_href {
                 local operator="${BASH_REMATCH[1]}"
                 local param="${BASH_REMATCH[2]}"
                 local returnType="${BASH_REMATCH[3]}"
-                # Strip the namespace from parameter and return type
-                param=$(echo "$param" | sed -E 's/.*\.//g')
-                returnType=$(echo "$returnType" | sed -E 's/.*\.//g')
-                href=$(echo "$href" | sed -E "s/\.op_${operator}\(.*\)~.*$/${param}-operator_${returnType}/")
+                # remove any additional characters in parameter and return type that is not a letter or number
+                if [[ "$operator" == "Implicit" ]]; then
+                    # if implicit use param
+                    # Strip the namespace
+                    param=$(echo "$param" | sed -E 's/.*\.[^a-zA-Z0-9]//g')
+                    href=$(echo "$href" | sed -E "s/\.op_${operator}\(.*\)~.*$/-operator_${param}/g")
+                else
+                    # else explicit use return type
+                    # Strip the namespace and convert to lowercase
+                    returnType=$(echo "$returnType" | sed -E 's/.*\.//g' | tr '[:upper:]' '[:lower:]')
+                    href=$(echo "$href" | sed -E "s/\.op_${operator}\(.*\)~.*$/-operator_${returnType}/g")
+                fi
             elif [[ "$href" =~ \.op_Equality ]]; then
                 # Rewrite equality operator and remove everything after eq
                 href=$(echo "$href" | sed -E 's/\.op_Equality/-operator_eq/; s/(eq).*/\1/')
