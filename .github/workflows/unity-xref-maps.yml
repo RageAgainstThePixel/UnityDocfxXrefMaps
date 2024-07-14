@@ -141,8 +141,11 @@ jobs:
           fi
       # generate index.html for the xref maps in _site
       - run: |
+          # get list of versions in reverse order and remove any duplicates
+          VERSIONS=$(ls -d ${{ github.workspace }}/_site/* | sort -r)
+          echo "Versions: $VERSIONS"
           echo "<html><head><title>Unity XRef Maps</title></head><body><h1>Unity XRef Maps</h1><ul>" > ${{ github.workspace }}/_site/index.html
-          for dir in ${{ github.workspace }}/_site/*; do
+          for dir in $VERSIONS; do
             if [ -d "$dir" ]; then
               echo "<li><a href=\"${dir##*/}/xrefmap.yml\">${dir##*/}</a></li>" >> ${{ github.workspace }}/_site/index.html
             fi
